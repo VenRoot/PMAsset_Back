@@ -1,5 +1,14 @@
+name: TypeScript Compile Check
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
 jobs:
-  test_pull_request:
+  build:
+    name: Compiling
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
