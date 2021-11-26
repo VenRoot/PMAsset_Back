@@ -1,6 +1,15 @@
 import express from 'express';
 import fs from 'fs';
+import bodyParser from 'body-parser';
+import helmet from 'helmet';
+import cors from 'cors';
+import morgan from 'morgan';
 const app = express();
+
+app.use(helmet());
+app.use(bodyParser.json());
+app.use(cors());
+app.use(morgan('combined'));
 
 app.get("/", (req, res) => {
     console.log("GET");
