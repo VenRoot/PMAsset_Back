@@ -6,10 +6,8 @@
   "type": "commonjs",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "npm run clean && tsc && ./copy.sh",
-    "start": "npm run build && node out index.js",
-    "build:windows": "tsc && copy.cmd",
-    "start:windows": "npm run build:windows && node server/index.js",
+    "build": "npm run clean && tsc",
+    "start": "npm run build && node out/index.js",
     "clean": "rm -rf ./out"
   },
   "repository": {
