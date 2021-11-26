@@ -17,4 +17,4 @@ jobs:
         node-version: 17
       - run: npm ci
       - run: npm i typescript
-      - run: npm run build:linux
+      - run: npm run build
