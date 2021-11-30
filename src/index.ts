@@ -4,12 +4,41 @@ import bodyParser from 'body-parser';
 import helmet from 'helmet';
 import cors from 'cors';
 import morgan from 'morgan';
+import {checkUser} from "./ad";
+
+
+(async () => {
+    checkUser("***REMOVED***", "!", (value) => {
+        console.log(value);
+    });
+    
+})();
+
+// const apiKeyAuth = require('api-key-auth');
 const app = express();
 
+app.use(express.json());
 app.use(helmet());
 app.use(bodyParser.json());
 app.use(cors());
 app.use(morgan('combined'));
+
+// const getSecret = (keyId:string, done:any) => {
+//     if (!apiKeys.has(keyId)) {
+//       return done(new Error('Unknown api key'));
+//     }
+//     const clientApp = apiKeys.get(keyId);
+//     done(null, clientApp.secret, {
+//       id: clientApp.id,
+//       name: clientApp.name
+//     });
+//   }
+  
+// app.use(apiKeyAuth({ getSecret }));
+
+app.get('/protected', (req:any, res) => {
+    res.send(`Hello ${req.credentials.name}`);
+  });
 
 app.get("/", (req, res) => {
     console.log("GET");
