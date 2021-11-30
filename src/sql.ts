@@ -2,8 +2,9 @@ import * as sql from 'mssql';
 import * as fs from 'fs';
 import * as dotenv from "dotenv";
 import { PQuery } from './interface';
+import path from "path";
 
-dotenv.config();
+dotenv.config({path: path.join(__dirname, "..", '/.env')});
 
 const config: sql.config = {
     user: process.env.DB_USER,
