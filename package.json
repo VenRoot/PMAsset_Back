@@ -31,8 +31,10 @@
     "typescript": "^4.6.0-dev.20211125"
   },
   "dependencies": {
+    "@types/bcrypt": "^5.0.0",
     "activedirectory2": "^2.1.0",
     "api-key-auth": "^0.2.3",
+    "bcrypt": "^5.0.1",
     "body-parser": "^1.19.0",
     "cors": "^2.8.5",
     "dotenv": "^10.0.0",
