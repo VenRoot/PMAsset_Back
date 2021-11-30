@@ -14,8 +14,10 @@ import {decrypt, encrypt, generateKey} from "./crypto";
 import {IAuthRequest} from "./interface";
 import {Sessions} from "./session";
 
+if(process.env.TEST_USER === undefined || process.env.TEST_PASSWD === undefined) throw new Error("No test user or password");
+
 (async () => {
-    checkUser("***REMOVED***", "***REMOVED***", (value) => {
+    checkUser(process.env.TEST_USER as string, process.env.TEST_PASSWD as string, (value) => {
         console.log(value);
     }).catch(err => {
         console.log(err);

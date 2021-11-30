@@ -10,6 +10,9 @@ const ad = new ActiveDirectory({
     password: process.env.AZURE_PASSWD as string,
 });
 
+console.log(process.env.AZURE_USER, process.env.AZURE_PASSWD);
+
+
 interface err{
     lde_message: string;
 }
@@ -24,19 +27,20 @@ export const generateSessionID = (): string => bcrypt.hashSync(Math.random().toS
 export function checkUser(username: string, password: string, callback: (user: boolean) => void) {
     return new Promise((resolve, reject) =>  {
         //@ts-ignore
-        ad.authenticate(username, password, (err:err , user) => {
+        ad.authenticate(username, password, (err:err , auth) => {
             if (err) {
-                console.log(err);
-                console.log(typeof err)
-
-                if(err.lde_message.includes("data 52e")) reject("Wrong Username or password!");
+                if(err.lde_message.includes("data 52e")) reject("Invalid password!");
+                else if(err.lde_message.includes("data 525")) reject("User not found!");
+                else if(err.lde_message.includes("data 533")) reject("Account disabled!");
+                else if(err.lde_message.includes("data 701")) reject("Account expired!");
                 else reject(err); 
+                return;
             }
-            if (!user) {
+            if (!auth) {
                 console.error("User not found");
                 reject("User not found");
             }        
-            callback(user);
+            callback(auth);
         });
     });
 }
