@@ -18,7 +18,7 @@ const config: sql.config = {
     },
     beforeConnect: connection => {
         // connection.on("debug", message => console.log(message));
-        connection.on("error", err => console.log(err));
+        connection.on("error", err => console.error("Error on Connection"+err));
     }
 };
 
@@ -49,7 +49,7 @@ export const query = async (query: string, prepared: PQuery[] = []) => {
     }
     catch(e)
     {
-        console.error(e);
+        console.log("Error in query: " + e);
     }
 };
 ((async () => {
