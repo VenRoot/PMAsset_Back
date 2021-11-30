@@ -1,3 +1,7 @@
+import dotenv from "dotenv";
+import path from "path";
+dotenv.config({path: path.join(__dirname, "../.env")});
+
 import express from 'express';
 import {Response} from "express";
 import fs from 'fs';

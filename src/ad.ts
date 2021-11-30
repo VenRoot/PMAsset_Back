@@ -6,8 +6,8 @@ import {Sessions} from "./session";
 const ad = new ActiveDirectory({
     url: "ldap:***REMOVED***",
     baseDN: "dc=***REMOVED***,dc=net",
-    username: "PMWNTMAIl\\***REMOVED***",
-    password: "***REMOVED***",
+    username: process.env.AZURE_USER as string,
+    password: process.env.AZURE_PASSWD as string,
 });
 
 interface err{
