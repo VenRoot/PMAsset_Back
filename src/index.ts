@@ -15,6 +15,8 @@ import {IAuthRequest, IGetEntriesRequest} from "./interface";
 import {checkAlreadyLoggedIn, Sessions} from "./session";
 import { getEntries } from "./sql";
 
+import https from "https";
+
 if(process.env.TEST_USER === undefined || process.env.TEST_PASSWD === undefined) throw new Error("No test user or password");
 
 (async () => {
@@ -120,10 +122,10 @@ app.get("/getEntries", async (req, res) => {
     if(typeof result == "string") endRes(res, 200, result);
 });
 
-app.get("/getSession", (req, res) => {
-    console.log(Sessions);
-    return endRes(res, 200, JSON.stringify(Sessions));
-});
+// app.get("/getSession", (req, res) => {
+//     console.log(Sessions);
+//     return endRes(res, 200, JSON.stringify(Sessions));
+// });
 
 app.post("/", (req, res) => {
     console.log("Post");
@@ -157,8 +159,14 @@ app.delete("/", (req, res) => {
     console.log(req, res);
 });
 
+const credentials: https.ServerOptions = {
+    key: fs.readFileSync(path.join(__dirname, '..', 'keys', 'key.pem')),
+    cert: fs.readFileSync(path.join(__dirname, '..', 'keys', 'cert.pem')),
+    maxVersion: 'TLSv1.3',
+    minVersion: 'TLSv1.3'
+};
 
-app.listen(5000, () => {
+https.createServer(credentials, app).listen(5000, "0.0.0.0", () => {
     console.log("Server is running on port 5000");
 });
 
@@ -172,11 +180,7 @@ const endRes = (res:Response, status:number, message:string) => {
 
 const assignNewKey = async (res:Response) => {
     let key = generateKey();
-    console.log(key);
-    
-    while(Sessions.find(session => session.id === key)) key = generateKey();
-    console.log("NewKey");
-    
+    while(Sessions.find(session => session.id === key)) key = generateKey();    
     Sessions.push({id: key, date: new Date()});
     return endRes(res, 200, key);
 };
