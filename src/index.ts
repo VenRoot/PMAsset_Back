@@ -81,10 +81,11 @@ app.get("/auth", async (req, res) => {
     if(auth.type === "RequestKey") return assignNewKey(res); //
     else if(auth.type === "AuthUser") {
         if(auth.username === undefined || auth.password === undefined) return endRes(res, 401, "No username or password"); //Check if username and password are set
+            let session = Sessions.findIndex(session => session.id === auth.SessionID); 
+            if(session === -1) return endRes(res, 408, "Session not found"); //Check if session is found
             checkUser(auth.username, auth.password, async (value) => {
                 if(value) {
-                    let session = Sessions.findIndex(session => session.id === auth.SessionID); 
-                    if(session === -1) return endRes(res, 408, "Session not found"); //Check if session is found
+                    
                     if(Sessions[session].user?.authenticated) return endRes(res, 403, "Session already has a user logged in"); //Check if user is already logged in
                     if(checkAlreadyLoggedIn(auth.username as string)) return endRes(res, 403, "The User is already logged in from another session!");  //Check if the user is already logged in from another session
                     Sessions[session].user = {username: auth.username as string, authenticated: true};
