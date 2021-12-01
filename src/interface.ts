@@ -19,3 +19,8 @@ export interface IAuthRequest
     password?: string;
     SessionID?: string;
 }
+export interface IGetEntriesRequest
+{
+    username: string;
+    SessionID: string;
+}
