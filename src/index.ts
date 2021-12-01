@@ -63,17 +63,8 @@ app.get('/protected', (req:any, res) => {
 
 app.get("/", (req, res) => {
     console.log("GET");
-    res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({
-        message: "Hello World",
-        status: 200,
-        req: {
-            method: req.method,
-            url: req.url,
-            headers: req.headers,
-            body: req.body
-        }
-    }));
+    res.writeHead(200, { "Content-Type": "text/html" });
+    res.end("Du hier nix im Backend rumkruschdeln! Du nur machen mit Oberfläche! Du machen mit <a href='https://google.com'>Frontend</a> die Arbeit!<br>Sonst <h1 style='color: red;'>Grande Problema!<h1>");
 });
 
 app.get("/auth", async (req, res) => {
