@@ -23,7 +23,7 @@ if(process.env.TEST_USER === undefined || process.env.TEST_PASSWD === undefined)
         console.log(err);
     });
     let key = generateKey();
-    let data = await encrypt("***REMOVED***", generateKey());
+    let data = await encrypt(process.env.TEST_PASSWD as string, generateKey());
 
     console.log(data);
     let owo = await decrypt(data);
