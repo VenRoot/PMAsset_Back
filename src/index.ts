@@ -11,8 +11,9 @@ import cors from 'cors';
 import morgan from 'morgan';
 import {checkUser} from "./ad";
 import {decrypt, encrypt, generateKey} from "./crypto";
-import {IAuthRequest} from "./interface";
+import {IAuthRequest, IGetEntriesRequest} from "./interface";
 import {checkAlreadyLoggedIn, Sessions} from "./session";
+import { getEntries } from "./sql";
 
 if(process.env.TEST_USER === undefined || process.env.TEST_PASSWD === undefined) throw new Error("No test user or password");
 
@@ -91,21 +92,32 @@ app.get("/auth", async (req, res) => {
                     Sessions[session].user = {username: auth.username as string, authenticated: true};
                     console.log(Sessions[session]);
                     Sessions[session].date = new Date(); //Update session date to keep it alive
-                    return endRes(res, 204, "Successfully logged in");
+                    return endRes(res, 200, "Successfully logged in");
                 }
-            }).catch(err => {
-                return endRes(res, 401, err);
-            });
+            }).catch(err => endRes(res, 401, err));
     }
     else if(auth.type === "Logout")
     {
         let session = Sessions.findIndex(session => session.id === auth.SessionID);
         if(session === -1) return endRes(res, 404, "Session not found or expired");
         Sessions.splice(session, 1);
-        return endRes(res, 204, "Successfully logged out");
+        return endRes(res, 200, "Successfully logged out");
     }
     else return endRes(res, 401, "Invalid auth type");
 
+});
+
+app.get("/getEntries", async (req, res) => {
+    if(req.headers.auth === undefined) return endRes(res, 400, "No auth header");
+    let request = JSON.parse(req.headers.req as string) as IGetEntriesRequest;
+    if(request.username === undefined || request.SessionID === undefined) return endRes(res, 401, "No username or sessionID");
+    let session = Sessions.findIndex(session => session.id === request.SessionID);
+    if(session === -1) return endRes(res, 404, "Session not found");
+    if(!Sessions[session].user?.authenticated) return endRes(res, 403, "User not authenticated");
+    if(Sessions[session].user?.username !== request.username) return endRes(res, 403, "User not authenticated");
+
+    let result = await getEntries(res);
+    if(typeof result == "string") endRes(res, 200, result);
 });
 
 app.get("/getSession", (req, res) => {

@@ -1,6 +1,7 @@
 import * as sql from 'mssql';
 import * as fs from 'fs';
 import * as dotenv from "dotenv";
+import {Response} from "express";
 import { PQuery } from './interface';
 import path from "path";
 
@@ -22,7 +23,15 @@ const config: sql.config = {
     }
 };
 
+export const getEntries = async (res: Response) => {
+    const result = await query(`SELECT * FROM entries`).catch(err => {
+        console.error(err);
+        res.status(500).send(err);
+    });
+    if(!result) return res.status(400).send("No entries found");
 
+    return result.recordset[0].DATA as string;
+};
 
 export const query = async (query: string, prepared: PQuery[] = []) => {
     try
@@ -50,9 +59,10 @@ export const query = async (query: string, prepared: PQuery[] = []) => {
     catch(e)
     {
         console.log("Error in query: " + e);
+        throw e;
     }
 };
 ((async () => {
-    console.log(await query("SELECT 1+1;"));
+    console.log(JSON.stringify(await query("SELECT * from entries;")));
 }))();
 
