@@ -94,6 +94,13 @@ app.get("/auth", (req, res) => {
                 return endRes(res, 401, err);
             });
     }
+    else if(auth.type === "Logout")
+    {
+        let session = Sessions.findIndex(session => session.id === auth.SessionID);
+        if(session === -1) return endRes(res, 401, "Session not found");
+        Sessions.splice(session, 1);
+        return endRes(res, 200, "Success");
+    }
     else return endRes(res, 401, "Invalid auth type");
 
 });
@@ -150,6 +157,6 @@ const assignNewKey = async (res:Response) => {
     while(Sessions.find(session => session.id === key)) key = generateKey();
     console.log("NewKey");
     
-    Sessions.push({id: key});
+    Sessions.push({id: key, date: new Date()});
     return endRes(res, 200, key);
 };
