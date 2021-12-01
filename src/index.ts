@@ -82,7 +82,7 @@ app.get("/auth", async (req, res) => {
     else if(auth.type === "AuthUser") {
         if(auth.username === undefined || auth.password === undefined) return endRes(res, 401, "No username or password"); //Check if username and password are set
             let session = Sessions.findIndex(session => session.id === auth.SessionID); 
-            if(session === -1) return endRes(res, 408, "Session not found"); //Check if session is found
+            if(session === -1) return endRes(res, 404, "Session not found"); //Check if session is found
             checkUser(auth.username, auth.password, async (value) => {
                 if(value) {
                     
@@ -100,7 +100,7 @@ app.get("/auth", async (req, res) => {
     else if(auth.type === "Logout")
     {
         let session = Sessions.findIndex(session => session.id === auth.SessionID);
-        if(session === -1) return endRes(res, 408, "Session not found or expired");
+        if(session === -1) return endRes(res, 404, "Session not found or expired");
         Sessions.splice(session, 1);
         return endRes(res, 204, "Successfully logged out");
     }
