@@ -14,6 +14,7 @@ import {decrypt, encrypt, generateKey} from "./crypto";
 import {IAuthRequest, IGetEntriesRequest} from "./interface";
 import {checkAlreadyLoggedIn, Sessions} from "./session";
 import { getEntries } from "./sql";
+import {IRecordSet} from "mssql";
 
 import https from "https";
 
@@ -110,7 +111,8 @@ app.get("/getEntries", async (req, res) => {
     if(Sessions[session].user?.username !== request.username) return endRes(res, 403, "User not authenticated");
 
     let result = await getEntries(res);
-    if(typeof result == "string") endRes(res, 200, result);
+    //Check if result is type of IRecordSet
+    if(result != null) endRes(res, 200, JSON.stringify(result));
 });
 
 // app.get("/getSession", (req, res) => {
