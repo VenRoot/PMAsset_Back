@@ -2,7 +2,7 @@ import * as sql from 'mssql';
 import * as fs from 'fs';
 import * as dotenv from "dotenv";
 import {Response} from "express";
-import { PQuery } from './interface';
+import { Item, PQuery, PQueryArray } from './interface';
 import path from "path";
 
 dotenv.config({path: path.join(__dirname, "..", '/.env')});
@@ -28,17 +28,40 @@ export const getEntries = async (res: Response) => {
         console.error(err);
         res.status(500).send(err);
     });
-    if(!result) return res.status(400).send("No entries found");
+    if(!result) {res.status(400).end("No entries found"); return null}
 
-    return result.recordset[0].DATA as string;
+    return result.recordsets;
 };
 
-export const query = async (query: string, prepared: PQuery[] = []) => {
+export const addEntry = async (_entry: string) => {
+    const entry = JSON.parse(_entry) as Item;
+    switch(entry.kind)
+    {
+        case "Konferenz":
+            query(`INSERT INTO [dbo].[entries] ([DATA]) VALUES (@value)`, [{name: "value", value: _entry, type: sql.VarChar}]);
+            break;
+        case "Monitor": 
+            query(`INSERT INTO [dbo].[entries] ([DATA]) VALUES (@value)`, [{name: "value", value: _entry, type: sql.VarChar}]);
+            break;
+        case "PC": 
+            query(`INSERT INTO [dbo].[entries] ([DATA]) VALUES (@value)`, [{name: "value", value: _entry, type: sql.VarChar}]);
+            break;
+        case "Phone": 
+            query(`INSERT INTO [dbo].[entries] ([DATA]) VALUES (@value)`, [{name: "value", value: _entry, type: sql.VarChar}]);
+            break;
+    }
+};
+
+
+//Fix this shit
+export const query = async (query: string, prepared?: PQueryArray) => {
     try
     {
+        console.log(query);
+        
         const pool = new sql.ConnectionPool(config);
         await pool.connect();
-        if(prepared.length == 0)
+        if(prepared == undefined)
         {
             const result = await pool.query(query).catch(async err => {
                 console.log(err);
@@ -48,10 +71,18 @@ export const query = async (query: string, prepared: PQuery[] = []) => {
             await pool.close();
             return result;
         }
+        console.log(`{${[prepared[0].value]}: ${prepared[0].value}}`);
+        console.log(1);
         const ps = new sql.PreparedStatement(pool);
-        for(let i = 0; i < prepared.length; i++) ps.input(prepared[i].value, prepared[i].type);
+        console.log(2);
+        ps.input(prepared[0].name, prepared[0].type);
+        console.log(3);
         await ps.prepare(query);
-        const result = await ps.execute(prepared);
+        console.log(4);
+        const result = await ps.execute({
+            [prepared[0].name]: prepared[0].value
+        });
+        console.log(5);
         await ps.unprepare();
         await pool.close();
     return result;
@@ -64,5 +95,6 @@ export const query = async (query: string, prepared: PQuery[] = []) => {
 };
 ((async () => {
     console.log(JSON.stringify(await query("SELECT * from entries;")));
-}))();
+    console.log(JSON.stringify(await query("SELECT * from entries WHERE DATA = @value;", [{name: "value", value: "{Hallo}", type: sql.VarChar}])));
+}));
 
