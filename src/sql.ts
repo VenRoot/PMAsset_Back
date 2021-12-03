@@ -30,7 +30,7 @@ export const getEntries = async (res: Response) => {
     });
     if(!result) {res.status(400).end("No entries found"); return null}
 
-    return result.recordsets;
+    return result.recordset;
 };
 
 export const addEntry = async (_entry: string) => {
