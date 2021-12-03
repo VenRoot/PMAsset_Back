@@ -29,6 +29,8 @@ export function checkUser(username: string, password: string, callback: (user: b
         //@ts-ignore
         ad.authenticate(username, password, (err:err , auth) => {
             if (err) {
+                console.log(err);
+                if(typeof err.lde_message != "string") reject(err.lde_message); 
                 if(err.lde_message.includes("data 52e")) reject("Invalid password!");
                 else if(err.lde_message.includes("data 525")) reject("User not found!");
                 else if(err.lde_message.includes("data 533")) reject("Account disabled!");
