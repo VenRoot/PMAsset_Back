@@ -1,8 +1,6 @@
 import ActiveDirectory from "activedirectory2";
 import bcrypt from "bcrypt";
 
-import {Sessions} from "./session";
-
 const ad = new ActiveDirectory({
     url: "ldap:***REMOVED***",
     baseDN: "dc=***REMOVED***,dc=net",
@@ -24,25 +22,23 @@ export const generateSessionID = (): string => bcrypt.hashSync(Math.random().toS
 
 
 //make a function which will return a callback
-export function checkUser(username: string, password: string, callback: (user: boolean) => void) {
-    return new Promise((resolve, reject) =>  {
-        //@ts-ignore
-        ad.authenticate(username, password, (err:err , auth) => {
-            if (err) {
-                console.log(err);
-                if(typeof err.lde_message != "string") reject(err.lde_message); 
-                if(err.lde_message.includes("data 52e")) reject("Invalid password!");
-                else if(err.lde_message.includes("data 525")) reject("User not found!");
-                else if(err.lde_message.includes("data 533")) reject("Account disabled!");
-                else if(err.lde_message.includes("data 701")) reject("Account expired!");
-                else reject(err); 
-                return;
-            }
-            if (!auth) {
-                console.error("User not found");
-                reject("User not found");
-            }        
-            callback(auth);
-        });
-    });
+export const checkUser = (username: string, password: string, callback: (user?: boolean | null, err?: string) => void) => {
+    //@ts-ignore
+    ad.authenticate(username, password, (err:err , auth) => {
+    if (err) {
+        console.log(err.lde_message);
+        if(typeof err.lde_message != "string") callback(undefined, err.lde_message); 
+        if(err.lde_message.includes("data 52e")) callback(undefined, "Invalid password!");
+        else if(err.lde_message.includes("data 525")) callback(undefined, "User not found!");
+        else if(err.lde_message.includes("data 533")) callback(undefined, "Account disabled!");
+        else if(err.lde_message.includes("data 701")) callback(undefined, "Account expired!");
+        else callback(undefined, err.lde_message); 
+        return;
+    }
+    if (!auth) {
+        console.error("User not found");
+        callback(undefined, "User not found");
+    }        
+    callback(auth);
+});
 }
