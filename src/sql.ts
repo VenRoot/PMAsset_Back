@@ -1,7 +1,8 @@
 import * as sql from 'mssql';
 import * as fs from 'fs';
 import * as dotenv from "dotenv";
-import { PQuery } from './interface';
+import {Response} from "express";
+import { Item, PQuery, PQueryArray } from './interface';
 import path from "path";
 
 dotenv.config({path: path.join(__dirname, "..", '/.env')});
@@ -22,14 +23,102 @@ const config: sql.config = {
     }
 };
 
+export const getEntries = async (res: Response) => {
+    const result = await query(`SELECT * FROM entries`).catch(err => {
+        console.error(err);
+        res.status(500).send(err);
+    });
+    if(!result) {res.status(400).end("No entries found"); return null}
+
+    return result.recordset;
+};
 
 
-export const query = async (query: string, prepared: PQuery[] = []) => {
+
+export const getEntry = async (id: number, res: Response) => {
+    const result = await query(`SELECT * FROM entries WHERE id = ${id}`).catch(err => {
+        console.error(err);
+        res.status(500).send(err);
+    });
+    if(!result) {res.status(400).end("No entries found"); return null}
+
+    return result.recordset;
+};
+
+export const addEntry = async (entry: Item) => {
+    switch(entry.kind)
+    {
+        case "Konferenz":
+            query(`INSERT INTO [dbo].[entries] VALUES (@value)`, [{name: "value", value: entry, type: sql.VarChar}]);
+            break;
+        case "Monitor": 
+            query(`INSERT INTO [dbo].[MONITOR] VALUES (@itnr, @sn, @hersteller, @type, @status, @besitzer, @form, @model)`, [
+                {name: "itnr", value: entry.it_nr, type: sql.VarChar}, {name: "sn", value: entry.seriennummer, type: sql.VarChar}, {name: "hersteller", value: entry.hersteller, type: sql.VarChar}, {name: "type", value: entry.type, type: sql.VarChar}, {name: "status", value: entry.status, type: sql.VarChar}, {name: "besitzer", value: entry.besitzer, type: sql.VarChar}, {name: "form", value: entry.form, type: sql.VarChar}, {name: "model", value: entry.model, type: sql.VarChar}]);
+            break;
+        case "PC":
+            console.log(`INSERT INTO [dbo].[PC] VALUES ("${entry.it_nr}", "${entry.seriennummer}", "${entry.hersteller}", "${entry.type}", "${entry.status}", "${entry.besitzer || ""}", "${entry.form}", "${entry.passwort}", "${entry.equipment}")`);
+            query(`INSERT INTO [dbo].[PC] VALUES (@itnr, @sn, @hersteller, @type, @status, @besitzer, @form, @passwort, @equipment)`, [
+                {name: "itnr", value: entry.it_nr, type: sql.VarChar}, {name: "sn", value: entry.seriennummer, type: sql.VarChar},{name: "hersteller", value: entry.hersteller, type: sql.VarChar}, {name: "type", value: entry.type, type: sql.VarChar}, {name: "status", value: entry.status, type: sql.VarChar}, {name: "besitzer", value: entry.besitzer || "", type: sql.VarChar}, {name: "form", value: entry.form || "", type: sql.VarChar}, {name: "passwort", value: entry.passwort, type: sql.VarChar}, {name: "equipment", value: JSON.stringify(entry.equipment), type: sql.VarChar}]);
+            break;
+        case "Phone": 
+            query(`INSERT INTO [dbo].[entries] ([DATA]) VALUES (@value)`, [{name: "value", value: entry, type: sql.VarChar}]);
+            break;
+    }
+};
+
+
+export const editEntry = async (entry: Item) => {
+    switch(entry.kind)
+    {
+        case "Konferenz":
+            query(`INSERT INTO [dbo].[entries] ([DATA]) VALUES (@value)`, [{name: "value", value: entry, type: sql.VarChar}]);
+            break;
+        case "Monitor":
+            //Modify data in DB with new values
+            query(`UPDATE [dbo].[MONITOR] SET [itnr] = @itnr, [sn] = @sn, [hersteller] = @hersteller, [type] = @type, [status] = @status, [besitzer] = @besitzer, [form] = @form, [model] = @model WHERE [itnr] = @itnr`, [
+                {name: "itnr", value: entry.it_nr, type: sql.VarChar}, {name: "sn", value: entry.seriennummer, type: sql.VarChar}, {name: "hersteller", value: entry.hersteller, type: sql.VarChar}, {name: "type", value: entry.type, type: sql.VarChar}, {name: "status", value: entry.status, type: sql.VarChar}, {name: "besitzer", value: entry.besitzer, type: sql.VarChar}, {name: "form", value: entry.form, type: sql.VarChar}, {name: "model", value: entry.model, type: sql.VarChar}]);
+            break;
+        case "PC":
+            //Modify data in DB with new values
+            query(`UPDATE [dbo].[PC] SET [ITNR] = @itnr, [SN] = @sn, [HERSTELLER] = @hersteller, [TYPE] = @type, [STATUS] = @status, [BESITZER] = @besitzer, [FORM] = @form, [PASSWORT] = @passwort, [EQUIPMENT] = @equipment WHERE [ITNR] = @itnr`, [
+                {name: "itnr", value: entry.it_nr, type: sql.VarChar}, {name: "sn", value: entry.seriennummer, type: sql.VarChar}, {name: "hersteller", value: entry.hersteller, type: sql.VarChar}, {name: "type", value: entry.type, type: sql.VarChar}, {name: "status", value: entry.status, type: sql.VarChar}, {name: "besitzer", value: entry.besitzer, type: sql.VarChar}, {name: "form", value: entry.form, type: sql.VarChar}, {name: "passwort", value: entry.passwort, type: sql.VarChar}, {name: "equipment", value: JSON.stringify(entry.equipment), type: sql.VarChar}]);
+            break;
+        case "Phone": 
+            query(`INSERT INTO [dbo].[entries] ([DATA]) VALUES (@value)`, [{name: "value", value: entry, type: sql.VarChar}]);
+            break;
+    }
+}
+
+export const deleteEntry = async (entry: Item) => {
+    switch(entry.kind)
+    {
+        case "Konferenz":
+            query(`DELETE FROM [dbo].[entries] ([DATA]) VALUES (@value)`, [{name: "value", value: entry, type: sql.VarChar}]);
+            break;
+        case "Monitor": 
+            query(`DELETE FROM [dbo].[MONITOR] WHERE ITNR = @itnr AND SN = @sn`, [
+                {name: "itnr", value: entry.it_nr, type: sql.VarChar}, {name: "sn", value: entry.seriennummer, type: sql.VarChar}]);
+            break;
+        case "PC":
+            //Delete data from DB
+            query(`DELETE FROM [dbo].[PC] WHERE ITNR = @itnr AND SN = @sn`, [
+                {name: "itnr", value: entry.it_nr, type: sql.VarChar}, {name: "sn", value: entry.seriennummer, type: sql.VarChar}]);
+            break;
+        case "Phone": 
+            query(`DELETE FROM [dbo].[entries] ([DATA]) VALUES (@value)`, [{name: "value", value: entry, type: sql.VarChar}]);
+            break;
+    }
+};
+
+//
+export const query = async (query: string, prepared?: PQueryArray[]) => {
     try
     {
+        console.log(query);
+        
         const pool = new sql.ConnectionPool(config);
         await pool.connect();
-        if(prepared.length == 0)
+        if(prepared == undefined)
         {
             const result = await pool.query(query).catch(async err => {
                 console.log(err);
@@ -39,10 +128,23 @@ export const query = async (query: string, prepared: PQuery[] = []) => {
             await pool.close();
             return result;
         }
+        console.log(1);
         const ps = new sql.PreparedStatement(pool);
-        for(let i = 0; i < prepared.length; i++) ps.input(prepared[i].value, prepared[i].type);
+        console.log(2);
+        prepared.forEach(p => ps.input(p.name, p.type));
+        // @ts-ignore
+        const obj = {}; prepared.forEach(p => obj[p.name] = p.value);
+        console.log(ps.statement, JSON.stringify(ps.parameters), prepared.length, query, JSON.stringify(obj));
+        console.log(3);
         await ps.prepare(query);
-        const result = await ps.execute(prepared);
+        console.log(4);
+        
+        
+        
+        
+        console.log(prepared.length, query, JSON.stringify(obj));
+        const result = await ps.execute(obj);
+        console.log(5);
         await ps.unprepare();
         await pool.close();
     return result;
@@ -50,9 +152,6 @@ export const query = async (query: string, prepared: PQuery[] = []) => {
     catch(e)
     {
         console.log("Error in query: " + e);
+        throw e;
     }
 };
-((async () => {
-    console.log(await query("SELECT 1+1;"));
-}))();
-
