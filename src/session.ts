@@ -14,6 +14,8 @@ export const Sessions:Session[] =
 
 ];
 
+export const checkUser = (username:string, Session:string) => Sessions.filter(session => session.id === Session && session.user?.username === username && session.user?.authenticated === true).length > 0;
+
 const checkSessions = ():void =>
 {
     Sessions.forEach(session =>
@@ -23,6 +25,17 @@ const checkSessions = ():void =>
             console.log(`Session ${session.id} expired`);
             
             Sessions.splice(Sessions.indexOf(session), 1);
+        }
+    });
+}
+
+export const RefreshSession = (Session:string):void =>
+{
+    Sessions.forEach(session =>
+    {
+        if (session.id === Session)
+        {
+            session.date = new Date();
         }
     });
 }
