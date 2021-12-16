@@ -3,8 +3,6 @@ import crypto from "crypto";
 const algorythm = "aes-256-cbc";
 const iv = crypto.randomBytes(16);
 
-let key = crypto.createHash('sha256').update(String("Jaööp"));
-
 interface data {
     iv: string;
     content: string;
