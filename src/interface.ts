@@ -117,3 +117,9 @@ export interface ICheckRequest
     username: string;
     SessionID: string;
 }
+
+
+export interface IGetEntriesRequest
+{
+    type: "PC" | "Monitor" | "Phone" | "Konferenz";
+}
