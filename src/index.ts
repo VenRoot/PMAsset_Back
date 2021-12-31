@@ -11,7 +11,7 @@ import cors from 'cors';
 import morgan from 'morgan';
 import {checkUser} from "./ad";
 import {decrypt, encrypt, generateKey} from "./crypto";
-import {IAuthRequest, ICheckRequest, IEntryDevices, Item} from "./interface";
+import {IAuthRequest, ICheckRequest, IEntryDevices, IGetEntriesRequest, Item} from "./interface";
 import {checkAlreadyLoggedIn, Sessions, checkUser as SessionUser, RefreshSession} from "./session";
 import { getEntries } from "./sql";
 import {IRecordSet} from "mssql";
@@ -113,21 +113,24 @@ const checkAuth = async (req:Request<{}, any, any, any, Record<string, any>>, re
 };
 
 app.get("/getEntries", async (req, res) => {
-    let request = JSON.parse(req.headers.req as string) as ICheckRequest;
-    if(!(await checkAuth(req, res, request))) return;
-
-    RefreshSession(request.SessionID);
-    let result = await getEntries(res);
+    let request = JSON.parse(req.headers.req as string) as IGetEntriesRequest;
+    let auth = JSON.parse(req.headers.auth as string) as ICheckRequest;
+    if(!(await checkAuth(req, res, auth))) return;
+    if(request.type == undefined) return endRes(res, 400, "No type");
+    RefreshSession(auth.SessionID);
+    let result = await getEntries(res, request);
     //Check if result is type of IRecordSet
     if(result != null) endRes(res, 200, JSON.stringify(result));
 });
 
 app.get("/getEntry", async (req, res) => {
-    let request = JSON.parse(req.headers.req as string) as ICheckRequest;
-    if(!(await checkAuth(req, res, request))) return;
+    let request = JSON.parse(req.headers.req as string) as IGetEntriesRequest;
+    let auth = JSON.parse(req.headers.auth as string) as ICheckRequest;
+    if(!(await checkAuth(req, res, auth))) return;
+    if(request.type == undefined) return endRes(res, 400, "No type");
 
-    RefreshSession(request.SessionID);
-    let result = await getEntries(res);
+    RefreshSession(auth.SessionID);
+    let result = await getEntries(res, request);
     //Check if result is type of IRecordSet
     if(result != null) endRes(res, 200, JSON.stringify(result));
 });
@@ -171,8 +174,11 @@ app.delete("/", (req, res) => {
 
 // Change device data
 app.post("/setData", async (req, res) => {
+    if(req.headers.auth === undefined) return endRes(res, 400, "No auth header");
+    if(req.headers.device === undefined) return endRes(res, 400, "No req header");
     const auth = JSON.parse(req.headers.auth as string) as ICheckRequest;
     const request = JSON.parse(req.headers.device as string) as Item;
+    if(request === undefined) return endRes(res, 400, "No request");
     if((await checkAuth(req, res, auth))) return;
 
     RefreshSession(auth.SessionID);
@@ -183,10 +189,14 @@ app.post("/setData", async (req, res) => {
 
 // Insert device data
 app.put("/setData", async(req, res) => {
+    console.log(req.headers);
+    
     if(req.headers.auth === undefined) return endRes(res, 400, "No auth header");
     if(req.headers.device === undefined) return endRes(res, 400, "No req header");
     const auth = JSON.parse(req.headers.auth as string) as ICheckRequest;
     const request = JSON.parse(req.headers.device as string).device as Item;
+    if(request === undefined) return endRes(res, 400, "No request");
+    console.log(request);
     console.table(auth);
     console.table(request);
     console.log(JSON.stringify(request));
@@ -224,7 +234,7 @@ https.createServer(credentials, app).listen(5000, "0.0.0.0", () => {
     console.log("Server is running on port 5000");
 });
 
-const endRes = (res:Response, status:number, message:string) => {
+export const endRes = (res:Response, status:number, message:string) => {
     res.writeHead(status, { "Content-Type": "application/json" });
     res.end(JSON.stringify({
         message: message,
