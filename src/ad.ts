@@ -27,11 +27,11 @@ export const checkUser = (username: string, password: string, callback: (user?: 
     ad.authenticate(username, password, (err:err , auth) => {
     if (err) {
         console.log(err.lde_message);
-        if(typeof err.lde_message != "string") callback(undefined, err.lde_message); 
-        if(err.lde_message.includes("data 52e")) callback(undefined, "Invalid password!");
-        else if(err.lde_message.includes("data 525")) callback(undefined, "User not found!");
-        else if(err.lde_message.includes("data 533")) callback(undefined, "Account disabled!");
-        else if(err.lde_message.includes("data 701")) callback(undefined, "Account expired!");
+        if(typeof err.lde_message != "string") return callback(undefined, err.lde_message); 
+        if(err.lde_message.includes("data 52e")) return callback(undefined, "Invalid password!");
+        else if(err.lde_message.includes("data 525")) return callback(undefined, "User not found!");
+        else if(err.lde_message.includes("data 533")) return callback(undefined, "Account disabled!");
+        else if(err.lde_message.includes("data 701")) return callback(undefined, "Account expired!");
         else callback(undefined, err.lde_message); 
         return;
     }
