@@ -31,13 +31,7 @@ const checkSessions = ():void =>
 
 export const RefreshSession = (Session:string):void =>
 {
-    Sessions.forEach(session =>
-    {
-        if (session.id === Session)
-        {
-            session.date = new Date();
-        }
-    });
+    Sessions.filter(session => session.id === Session).forEach(session => session.date = new Date());
 }
 
 
