@@ -58,14 +58,23 @@ export const getEntry = async (id: number, res: Response) => {
 
 export const addEntry = async (entry: Item) => {
     console.table(entry);
+    if(entry.kind == "PC" && !entry.equipment) entry.equipment = [];
     switch(entry.kind)
     {
         case "Konferenz":
             query(`INSERT INTO [dbo].[entries] VALUES (@value)`, [{name: "value", value: entry, type: sql.VarChar}]);
             break;
         case "Monitor": 
-            query(`INSERT INTO [dbo].[MONITOR] VALUES (@itnr, @sn, @hersteller, @type, @status, @besitzer, @form, @model)`, [
-                {name: "itnr", value: entry.it_nr, type: sql.VarChar}, {name: "sn", value: entry.seriennummer, type: sql.VarChar}, {name: "hersteller", value: entry.hersteller, type: sql.VarChar}, {name: "type", value: entry.type, type: sql.VarChar}, {name: "status", value: entry.status, type: sql.VarChar}, {name: "besitzer", value: entry.besitzer, type: sql.VarChar}, {name: "form", value: entry.form, type: sql.VarChar}, {name: "model", value: entry.model, type: sql.VarChar}]);
+            query(`INSERT INTO [dbo].[MONITOR] VALUES (@itnr, @type, @hersteller, @model, @sn, @standort, @status, @besitzer, @form)`, [
+                {name: "itnr", value: entry.it_nr, type: sql.VarChar}, 
+                {name: "type", value: entry.type, type: sql.VarChar}, 
+                {name: "hersteller", value: entry.hersteller, type: sql.VarChar}, 
+                {name: "model", value: entry.model, type: sql.VarChar},
+                {name: "sn", value: entry.seriennummer, type: sql.VarChar}, 
+                {name: "standort", value: entry.standort, type: sql.VarChar},
+                {name: "status", value: entry.status, type: sql.VarChar}, 
+                {name: "besitzer", value: entry.besitzer, type: sql.VarChar}, 
+                {name: "form", value: entry.form, type: sql.VarChar}]);
             break;
         case "PC":
             console.log(`INSERT INTO [dbo].[PC] VALUES ("${entry.it_nr}", "${entry.seriennummer}", "${entry.hersteller}", "${entry.type}", "${entry.status}", "${entry.besitzer || ""}", "${entry.form}", "${entry.passwort}", "${entry.equipment}", "${entry.standort}")`);
@@ -80,6 +89,7 @@ export const addEntry = async (entry: Item) => {
 
 
 export const editEntry = async (entry: Item) => {
+    if(entry.kind == "PC" && !entry.equipment) entry.equipment = [];
     switch(entry.kind)
     {
         case "Konferenz":
@@ -87,8 +97,16 @@ export const editEntry = async (entry: Item) => {
             break;
         case "Monitor":
             //Modify data in DB with new values
-            query(`UPDATE [dbo].[MONITOR] SET [itnr] = @itnr, [sn] = @sn, [hersteller] = @hersteller, [type] = @type, [status] = @status, [besitzer] = @besitzer, [form] = @form, [model] = @model WHERE [itnr] = @itnr`, [
-                {name: "itnr", value: entry.it_nr, type: sql.VarChar}, {name: "sn", value: entry.seriennummer, type: sql.VarChar}, {name: "hersteller", value: entry.hersteller, type: sql.VarChar}, {name: "type", value: entry.type, type: sql.VarChar}, {name: "status", value: entry.status, type: sql.VarChar}, {name: "besitzer", value: entry.besitzer, type: sql.VarChar}, {name: "form", value: entry.form, type: sql.VarChar}, {name: "model", value: entry.model, type: sql.VarChar}]);
+            query(`UPDATE [dbo].[MONITOR] SET [itnr] = @itnr, [type] = @type, [hersteller] = @hersteller, [model] = @model, [sn] = @sn, [standort] = @standort, [status] = @status, [besitzer] = @besitzer, [form] = @form WHERE [itnr] = @itnr`, [
+                {name: "itnr", value: entry.it_nr, type: sql.VarChar}, 
+                {name: "type", value: entry.type, type: sql.VarChar}, 
+                {name: "hersteller", value: entry.hersteller, type: sql.VarChar}, 
+                {name: "model", value: entry.model, type: sql.VarChar}, 
+                {name: "sn", value: entry.seriennummer, type: sql.VarChar}, 
+                {name: "standort", value: entry.standort, type: sql.VarChar},
+                {name: "status", value: entry.status, type: sql.VarChar}, 
+                {name: "besitzer", value: entry.besitzer, type: sql.VarChar}, 
+                {name: "form", value: entry.form, type: sql.VarChar}]);
             break;
         case "PC":
             //Modify data in DB with new values
@@ -102,6 +120,7 @@ export const editEntry = async (entry: Item) => {
 }
 
 export const deleteEntry = async (entry: Item) => {
+    if(entry.kind == "PC" && !entry.equipment) entry.equipment = [];
     switch(entry.kind)
     {
         case "Konferenz":

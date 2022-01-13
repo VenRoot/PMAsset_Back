@@ -23,6 +23,10 @@ export const generateSessionID = (): string => bcrypt.hashSync(Math.random().toS
 
 //make a function which will return a callback
 export const checkUser = (username: string, password: string, callback: (user?: boolean | null, err?: string) => void) => {
+    
+    console.log(username);
+    
+
     //@ts-ignore
     ad.authenticate(username, password, (err:err , auth) => {
     if (err) {
