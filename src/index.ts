@@ -16,7 +16,8 @@ import {checkAlreadyLoggedIn, Sessions, checkUser as SessionUser, RefreshSession
 import { getEntries } from "./sql";
 import {IRecordSet} from "mssql";
 
-import https from "https";
+import https from "http2";
+import spdy from "spdy";
 import { setData } from "./logic";
 
 if(process.env.TEST_USER === undefined || process.env.TEST_PASSWD === undefined) throw new Error("No test user or password");
@@ -56,7 +57,6 @@ app.get("/", (req, res) => {
 app.get("/auth", async (req, res) => {
     if(req.headers.auth === undefined) return endRes(res, 400, "No auth header");
     let auth = JSON.parse(req.headers.auth as string) as IAuthRequest;
-    console.log("Auth: ", auth);
     
     if(auth.type === "RequestKey") return assignNewKey(res); //
     else if(auth.type === "AuthUser") {
@@ -90,6 +90,14 @@ app.get("/auth", async (req, res) => {
 app.get("/users", async(req, res) => {
     console.log(Sessions);
     endRes(res, 200, "");
+});
+
+app.get("/refresh", async (req, res) => {
+    if(!req.headers.auth) return endRes(res, 400, "No auth header");
+    let auth = JSON.parse(req.headers.auth as string) as ICheckRequest;
+    if(!SessionUser(auth.username, auth.SessionID)) return endRes(res, 404, "Invalid Sesison/Username-Combo");
+    RefreshSession(auth.SessionID);
+    endRes(res, 200, "Successfully refreshed");
 });
 
 app.get("/check", async(req, res) => {
@@ -223,14 +231,18 @@ app.delete("/setData", async(req, res) => {
 
 });
 
-const credentials: https.ServerOptions = {
+const credentials: spdy.ServerOptions = {
     key: fs.readFileSync(path.join(__dirname, '..', 'keys', 'key.pem')),
     cert: fs.readFileSync(path.join(__dirname, '..', 'keys', 'cert.pem')),
     maxVersion: 'TLSv1.3',
-    minVersion: 'TLSv1.3'
+    minVersion: 'TLSv1.3',
+    spdy: {
+        protocols: ["h2", "spdy/2", "spdy/3"]
+    }
 };
 
-https.createServer(credentials, app).listen(5000, "0.0.0.0", () => {
+
+spdy.createServer(credentials, app).listen(5000, "0.0.0.0", () => {
     console.log("Server is running on port 5000");
 });
 
