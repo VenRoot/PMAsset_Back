@@ -1,5 +1,7 @@
 import ActiveDirectory from "activedirectory2";
 import bcrypt from "bcrypt";
+import crypto from "crypto";
+import { performance } from "perf_hooks";
 
 const ad = new ActiveDirectory({
     url: "ldap:***REMOVED***",
@@ -16,15 +18,13 @@ interface err{
 }
 
 
-
-export const generateSessionID = (): string => bcrypt.hashSync(Math.random().toString(), 10);
+//Create a hash of random 512 bits and salt it 10 times
+export const generateSessionID = (): string => bcrypt.hashSync(crypto.randomBytes(64), 10);
 
 
 
 //make a function which will return a callback
 export const checkUser = (username: string, password: string, callback: (user?: boolean | null, err?: string) => void) => {
-    
-    console.log(username);
     // if(process.env.DEVMODE == "true") return callback(true);
     //@ts-ignore
     ad.authenticate(username, password, (err:err , auth) => {
