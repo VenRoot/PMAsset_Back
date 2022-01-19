@@ -18,7 +18,7 @@ import {IRecordSet} from "mssql";
 
 import https from "http2";
 import spdy from "spdy";
-import { setData } from "./logic";
+import { setData, SetMonitors } from "./logic";
 
 if(process.env.TEST_USER === undefined || process.env.TEST_PASSWD === undefined) throw new Error("No test user or password");
 
@@ -91,6 +91,16 @@ app.get("/users", async(req, res) => {
     console.log(Sessions);
     endRes(res, 200, "");
 });
+
+
+app.get("/setMonitors", async (req, res) =>
+{
+    if(!req.headers.auth) return endRes(res, 400, "No auth header");
+    let auth = JSON.parse(req.headers.auth as string) as ICheckRequest;
+    let data = JSON.parse(req.headers.data as string) as {PCITNr: string, MonITNr: string[]};
+    if(!SessionUser(auth.username, auth.SessionID)) return endRes(res, 404, "Invalid Sesison/Username-Combo");
+    SetMonitors(data.MonITNr, data.PCITNr, res, true);
+})
 
 app.get("/refresh", async (req, res) => {
     if(!req.headers.auth) return endRes(res, 400, "No auth header");
