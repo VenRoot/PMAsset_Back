@@ -5,6 +5,7 @@ import {Response} from "express";
 import { IGetEntriesRequest, Item, PQuery, PQueryArray } from './interface';
 import path from "path";
 import { endRes } from '.';
+import { DeletePDF } from './pdf';
 
 dotenv.config({path: path.join(__dirname, "..", '/.env')});
 
@@ -44,26 +45,33 @@ export const getEntries = async (res: Response, type: IGetEntriesRequest) => {
     return result.recordset;
 };
 
-
-
-export const getEntry = async (id: number, res: Response) => {
-    const result = await query(`SELECT * FROM entries WHERE id = ${id}`).catch(err => {
+export const getEntry = async (ITNr: string, type: IGetEntriesRequest):Promise<sql.IRecordSet<any>> =>
+{
+    let q = "";
+    console.log(type);
+    switch(type.type)
+    {
+        case "PC": q = "SELECT * FROM PC WHERE ITNR = @itnr"; break;
+        case "Monitor": q = "SELECT * FROM MONITOR WHERE ITNR = @itnr"; break;
+        case "Phone": q = "SELECT * FROM PHONE WHERE ITNR = @itnr"; break;
+        case "Konferenz": q= "SELECT * FROM KONFERENZ WHERE ITNR = @itnr"; break;
+        default: throw "No Type";
+    }
+    const result = await query(q, [{name: "itnr", value: ITNr, type: sql.VarChar}]).catch(err => {
         console.error(err);
-        res.status(500).send(err);
+        throw err;
     });
-    if(!result) {res.status(400).end("No entries found"); return null}
-
+    if(!result) throw 404;
     return result.recordset;
-};
+}
 
-export const addEntry = async (entry: Item) => {
+export const addEntry = (entry: Item) => {
+    
+    return new Promise((resolve, reject) => {
     console.table(entry);
     if(entry.kind == "PC" && !entry.equipment) entry.equipment = [];
     switch(entry.kind)
     {
-        case "Konferenz":
-            query(`INSERT INTO [dbo].[entries] VALUES (@value)`, [{name: "value", value: entry, type: sql.VarChar}]);
-            break;
         case "Monitor": 
             query(`INSERT INTO [dbo].[MONITOR] VALUES (@itnr, @type, @hersteller, @model, @sn, @standort, @status, @besitzer, @form)`, [
                 {name: "itnr", value: entry.it_nr, type: sql.VarChar}, 
@@ -82,19 +90,42 @@ export const addEntry = async (entry: Item) => {
                 {name: "itnr", value: entry.it_nr, type: sql.VarChar}, {name: "sn", value: entry.seriennummer, type: sql.VarChar},{name: "hersteller", value: entry.hersteller, type: sql.VarChar}, {name: "type", value: entry.type, type: sql.VarChar}, {name: "status", value: entry.status, type: sql.VarChar}, {name: "besitzer", value: entry.besitzer || "", type: sql.VarChar}, {name: "form", value: entry.form || "", type: sql.VarChar}, {name: "passwort", value: entry.passwort, type: sql.VarChar}, {name: "equipment", value: JSON.stringify(entry.equipment), type: sql.VarChar}, {name: "standort", value: entry.standort, type: sql.VarChar}]);
             break;
         case "Phone": 
-            query(`INSERT INTO [dbo].[entries] ([DATA]) VALUES (@value)`, [{name: "value", value: entry, type: sql.VarChar}]);
+            query(`INSERT INTO [dbo].[PHONE] VALUES (@itnr, @sn, @model, @standort, @status, @besitzer, @form)`, [
+                {name: "itnr", value: entry.it_nr, type: sql.VarChar}, 
+                {name: "sn", value: entry.seriennummer, type: sql.VarChar}, 
+                {name: "model", value: entry.model, type: sql.VarChar}, 
+                {name: "standort", value: entry.standort, type: sql.VarChar}, 
+                {name: "status", value: entry.status, type: sql.VarChar}, 
+                {name: "besitzer", value: entry.besitzer, type: sql.VarChar}, 
+                {name: "form", value: entry.form, type: sql.VarChar}]);
             break;
-    }
+        
+        case "Konferenz":
+            query(`INSERT INTO [dbo].[KONFERENZ] VALUES (@itnr, @hersteller, @model, @sn, @standort, @status, @besitzer, @form)`, [
+                {name: "itnr", value: entry.it_nr, type: sql.VarChar},
+                {name: "hersteller", value: entry.hersteller, type: sql.VarChar},
+                {name: "model", value: entry.model, type: sql.VarChar},
+                {name: "sn", value: entry.seriennummer, type: sql.VarChar},
+                {name: "standort", value: entry.standort, type: sql.VarChar},
+                {name: "status", value: entry.status, type: sql.VarChar},
+                {name: "besitzer", value: entry.besitzer, type: sql.VarChar},
+                {name: "form", value: entry.form, type: sql.VarChar}
+            ]);
+            break;
+            default: reject("No Type");
+        }
+        resolve(true);
+    });
 };
 
 
 export const editEntry = async (entry: Item) => {
     if(entry.kind == "PC" && !entry.equipment) entry.equipment = [];
+    
+
+
     switch(entry.kind)
     {
-        case "Konferenz":
-            query(`INSERT INTO [dbo].[entries] ([DATA]) VALUES (@value)`, [{name: "value", value: entry, type: sql.VarChar}]);
-            break;
         case "Monitor":
             //Modify data in DB with new values
             query(`UPDATE [dbo].[MONITOR] SET [itnr] = @itnr, [type] = @type, [hersteller] = @hersteller, [model] = @model, [sn] = @sn, [standort] = @standort, [status] = @status, [besitzer] = @besitzer, [form] = @form WHERE [itnr] = @itnr`, [
@@ -111,20 +142,58 @@ export const editEntry = async (entry: Item) => {
         case "PC":
             //Modify data in DB with new values
             query(`UPDATE [dbo].[PC] SET [ITNR] = @itnr, [SN] = @sn, [HERSTELLER] = @hersteller, [TYPE] = @type, [STATUS] = @status, [BESITZER] = @besitzer, [FORM] = @form, [PASSWORT] = @passwort, [EQUIPMENT] = @equipment, [STANDORT] = @standort WHERE [ITNR] = @itnr`, [
-                {name: "itnr", value: entry.it_nr, type: sql.VarChar}, {name: "sn", value: entry.seriennummer, type: sql.VarChar}, {name: "hersteller", value: entry.hersteller, type: sql.VarChar}, {name: "type", value: entry.type, type: sql.VarChar}, {name: "status", value: entry.status, type: sql.VarChar}, {name: "besitzer", value: entry.besitzer, type: sql.VarChar}, {name: "form", value: entry.form, type: sql.VarChar}, {name: "passwort", value: entry.passwort, type: sql.VarChar}, {name: "equipment", value: JSON.stringify(entry.equipment), type: sql.VarChar}, {name: "standort", value: entry.standort, type: sql.VarChar}]);
+                {name: "itnr", value: entry.it_nr, type: sql.VarChar}, 
+                {name: "sn", value: entry.seriennummer, type: sql.VarChar}, 
+                {name: "hersteller", value: entry.hersteller, type: sql.VarChar}, 
+                {name: "type", value: entry.type, type: sql.VarChar}, 
+                {name: "status", value: entry.status, type: sql.VarChar}, 
+                {name: "besitzer", value: entry.besitzer, type: sql.VarChar}, 
+                {name: "form", value: entry.form, type: sql.VarChar}, 
+                {name: "passwort", value: entry.passwort, type: sql.VarChar}, 
+                {name: "equipment", value: JSON.stringify(entry.equipment), type: sql.VarChar}, 
+                {name: "standort", value: entry.standort, type: sql.VarChar}]);
+
+            if(entry.form == "Nein") DeletePDF(entry);
             break;
-        case "Phone": 
-            query(`INSERT INTO [dbo].[entries] ([DATA]) VALUES (@value)`, [{name: "value", value: entry, type: sql.VarChar}]);
+            case "Phone": 
+            query(`UPDATE [dbo].[PHONE] SET ITNR = @ITNR, SN = @SN, MODEL = @MODEL, STANDORT = @STANDORT, STATUS = @STATUS, BESITZER = @BESITZER, FORM = @FORM WHERE ITNR = @ITNR`, [
+                {name: "ITNR", value: entry.it_nr, type: sql.VarChar}, 
+                {name: "SM", value: entry.seriennummer, type: sql.VarChar}, 
+                {name: "MODEL", value: entry.model, type: sql.VarChar}, 
+                {name: "STANDORT", value: entry.standort, type: sql.VarChar}, 
+                {name: "STATUS", value: entry.status, type: sql.VarChar}, 
+                {name: "BESITZER", value: entry.besitzer, type: sql.VarChar}, 
+                {name: "FORM", value: entry.form, type: sql.VarChar}]);
+            break;
+
+        case "Konferenz":
+            query(`UPDATE [dbo].[KONFERENZ] SET ITNR = @itnr, HERSTELLER = @hersteller, MODEL = @model, SN = @sn, STANDORT = @standort, STATUS = @status, BESITZER = @besitzer, FORM = @form WHERE ITNR = @itnr`, [
+            {name: "itnr", value: entry.it_nr, type: sql.VarChar},
+            {name: "hersteller", value: entry.hersteller, type: sql.VarChar},
+            {name: "model", value: entry.model, type: sql.VarChar},
+            {name: "sn", value: entry.seriennummer, type: sql.VarChar},
+            {name: "standort", value: entry.standort, type: sql.VarChar},
+            {name: "status", value: entry.status, type: sql.VarChar},
+            {name: "besitzer", value: entry.besitzer, type: sql.VarChar},
+            {name: "form", value: entry.form, type: sql.VarChar}]);
+            break;
+        default: 
+            console.log("editEntry: Unknown kind");
             break;
     }
 }
 
+/**
+ * @param entry: Item
+ * @deprecated
+ */
 export const deleteEntry = async (entry: Item) => {
     if(entry.kind == "PC" && !entry.equipment) entry.equipment = [];
     switch(entry.kind)
     {
         case "Konferenz":
-            query(`DELETE FROM [dbo].[entries] ([DATA]) VALUES (@value)`, [{name: "value", value: entry, type: sql.VarChar}]);
+            query(`DELETE FROM [dbo].[KONFERENZ] WHERE ITNR = @itnr AND SN = @sn`, [
+                {name: "itnr", value: entry.it_nr, type: sql.VarChar}, {name: "sn", value: entry.seriennummer, type: sql.VarChar}]);
             break;
         case "Monitor": 
             query(`DELETE FROM [dbo].[MONITOR] WHERE ITNR = @itnr AND SN = @sn`, [
@@ -136,12 +205,11 @@ export const deleteEntry = async (entry: Item) => {
                 {name: "itnr", value: entry.it_nr, type: sql.VarChar}, {name: "sn", value: entry.seriennummer, type: sql.VarChar}]);
             break;
         case "Phone": 
-            query(`DELETE FROM [dbo].[entries] ([DATA]) VALUES (@value)`, [{name: "value", value: entry, type: sql.VarChar}]);
+            query(`DELETE FROM [dbo].[PHONE] WHERE ITNR = @ITNR AND SN = @SN`, [{name: "ITNR", value: entry.it_nr, type: sql.VarChar}, {name: "SN", value: entry.seriennummer, type: sql.VarChar}]);
             break;
     }
 };
 
-//
 export const query = async (query: string, prepared?: PQueryArray[]) => {
     try
     {

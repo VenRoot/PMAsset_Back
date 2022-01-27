@@ -1,16 +1,30 @@
 import { Response } from "express";
+import { endRes } from ".";
 import { Item } from "./interface";
 import {addEntry, deleteEntry, editEntry, query} from "./sql";
 
-export const setData = async (request: Item, method: "PUT" | "POST" | "DELETE") => {
+export const setData = async (request: Item, method: "PUT" | "POST" | "DELETE", res: Response, callback = true) => {
     switch(method)
     {
         case "PUT":
-            await addEntry(request); break;
+            await addEntry(request).catch(err => {
+                if(callback) endRes(res, 500, "Internal Server Error: "+JSON.stringify(err));
+            }).then(() => {
+                if(callback) endRes(res, 200, "Successfully inserted data");
+            });
+            break;
         case "POST":
-            await editEntry(request); break;
+            await editEntry(request).catch(err => {
+                if(callback) endRes(res, 500, "Internal server error: "+JSON.stringify(err));
+            }).then(() => {
+                if(callback) endRes(res, 200, "Successfully inserted data");
+            });break;
         case "DELETE":
-            await deleteEntry(request); break;
+            await deleteEntry(request).catch(err => {
+                if(callback) endRes(res, 500, "Internal server error: "+JSON.stringify(err));
+            }).then(() => {
+               if(callback) endRes(res, 200, "Successfully inserted data");
+            });break;
     }
 };
 
