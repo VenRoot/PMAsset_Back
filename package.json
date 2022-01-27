@@ -6,9 +6,10 @@
   "type": "commonjs",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "npm run clean && tsc",
+    "build": "npm run clean:windows && tsc",
     "start": "npm run build && node out/index.js",
-    "clean": "rm -rf ./out/*"
+    "clean": "rm -rf ./out/*",
+    "clean:windows": "del .\\out\\*.*"
   },
   "repository": {
     "type": "git",
