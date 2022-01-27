@@ -2,6 +2,7 @@ import ActiveDirectory from "activedirectory2";
 import bcrypt from "bcrypt";
 import crypto from "crypto";
 import { performance } from "perf_hooks";
+import fs from "fs";
 
 const ad = new ActiveDirectory({
     url: "ldap:***REMOVED***",
@@ -45,3 +46,39 @@ export const checkUser = (username: string, password: string, callback: (user?: 
     callback(auth);
 });
 }
+
+export const getUserInfo = (username: string, callback: (user?: any | null, err?: string) => void) => {
+
+    const attributes = [
+        // 'displayName',
+        'department',
+        'departmentNumber',
+        'name'
+    ];
+
+    const adFilter = (search:any) => [
+        '(&(objectCategory=person)(objectClass=user)',
+        '(|',
+        `(initials=${search})`,
+        `(cn=${search.replace(/\s/g, '*')}*)`,
+        `(mail=${search})`,
+        `(userPrincipalName=${search})`,
+        `(proxyAddresses=*:${search})`,
+        '))'
+      ].join('');
+
+      let filter = adFilter(username);
+      let opt = {
+          attributes: attributes,
+          filter: filter
+      };
+
+      //@ts-ignore
+    ad.findUser(opt, username, (err, user) => {
+        if(err) throw err;
+        console.log(user);
+        if(err) return callback(undefined, err as any);
+        
+        callback(user as any);
+    });
+};

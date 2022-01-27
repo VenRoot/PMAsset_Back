@@ -1,6 +1,7 @@
 import dotenv from "dotenv";
 import path from "path";
 import os from "os";
+import md5 from "md5";
 dotenv.config({path: path.join(__dirname, "../.env")});
 
 import express, { Request, Response } from 'express';
@@ -9,16 +10,17 @@ import bodyParser from 'body-parser';
 import helmet from 'helmet';
 import cors from 'cors';
 import morgan from 'morgan';
-import {checkUser} from "./ad";
+import {checkUser, getUserInfo} from "./ad";
 import {decrypt, encrypt, generateKey} from "./crypto";
 import {IAuthRequest, ICheckRequest, IEntryDevices, IGetEntriesRequest, Item} from "./interface";
 import {checkAlreadyLoggedIn, Sessions, checkUser as SessionUser, RefreshSession} from "./session";
-import { getEntries } from "./sql";
+import { editEntry, getEntries, getEntry } from "./sql";
 import {IRecordSet} from "mssql";
 
 import https from "http2";
 import spdy from "spdy";
 import { setData, SetMonitors } from "./logic";
+import { FillPDF } from "./pdf";
 
 if(process.env.TEST_USER === undefined || process.env.TEST_PASSWD === undefined) throw new Error("No test user or password");
 
@@ -92,6 +94,196 @@ app.get("/users", async(req, res) => {
     endRes(res, 200, "");
 });
 
+app.get("/getUser", async(req, res) =>
+{
+    getUserInfo("Markus.Loeffler***REMOVED***.com", (user, err) =>
+    {
+        if(err) return endRes(res, 500, JSON.stringify(err));
+        endRes(res, 200, JSON.stringify(user));
+    });
+});
+
+// app.get("/pdf", express.static(path.join("..", "pdf")));
+
+app.get("/pdf", async(req, res) => {
+    if(!req.headers.auth) return endRes(res, 400, "No auth header");
+    if(!req.headers.data) return endRes(res, 400, "No data header");
+    let auth = JSON.parse(req.headers.auth as string) as ICheckRequest;
+    let data = JSON.parse(req.headers.data as string) as {ITNr: string};
+    if(!SessionUser(auth.username, auth.SessionID)) return endRes(res, 404, "Invalid Sesison/Username-Combo");
+    RefreshSession(auth.SessionID);
+    if(!data.ITNr) return endRes(res, 400, "No ITNr");
+    //Check if data.ITNr is a path, check, if the path exists and is a pdf
+    const p = path.join(__dirname, "..", "pdf", data.ITNr, "output.pdf");
+    if(!fs.existsSync(p)) return endRes(res, 404, "File not found");
+
+    const file = Buffer.from(fs.readFileSync(p, "binary"), "binary");
+    endRes(res, 200, "OK" , file);
+});
+
+const hexEncode = function(res:string){
+    var hex, i;
+
+    var result = "";
+    for (i=0; i<res.length; i++) {
+        hex = res.charCodeAt(i).toString(16);
+        result += hex+" ";
+    }
+
+    return result
+}
+
+
+app.put("/pdf", async(req, res) => {
+    if(!req.headers.auth) return endRes(res, 400, "No auth header");
+    if(!req.headers.data) return endRes(res, 400, "No data header");
+    let auth = JSON.parse(req.headers.auth as string) as ICheckRequest;
+    let data = JSON.parse(req.headers.data as string) as {ITNr: string, type: IGetEntriesRequest["type"]};
+    if(!SessionUser(auth.username, auth.SessionID)) return endRes(res, 404, "Invalid Sesison/Username-Combo");
+    RefreshSession(auth.SessionID);
+    if(!data.ITNr) return endRes(res, 400, "No ITNr");
+    const p = path.join(__dirname, "..", "pdf", data.ITNr, "output.pdf");
+    if(fs.existsSync(p)) return endRes(res, 409, "File already exists");
+    
+
+    
+    const x:any = await getEntry(data.ITNr, {type: data.type}).catch(err => {
+        console.log("Fehler: ",err);
+        switch(err)
+        {
+            case 404: return endRes(res, 404, "File not found"); break;
+            default: return endRes(res, 500, "Internal Server Error\n\n"+JSON.stringify(err));
+        }
+    });
+    if(!x) return endRes(res, 500, "Internal Server Error\n\n");
+    fs.mkdirSync(path.join(__dirname, "..", "pdf", data.ITNr));
+    const newPC:Item = {
+        kind: "PC",
+        it_nr: x[0].ITNR,
+        seriennummer: x[0].SN,
+        hersteller: x[0].HERSTELLER,
+        equipment: x[0].EQUIPMENT,
+        form: "Ja",
+        type: x[0].TYPE,
+        passwort: x[0].PASSWORT,
+        standort: x[0].STANDORT,
+        status: x[0].STATUS,
+        besitzer: x[0].BESITZER,
+    }
+    FillPDF(newPC).catch(err => {
+        if(err) endRes(res, 500, "Internal Server Error\n\n"+JSON.stringify(err));
+    }).then(pdf => {
+        endRes(res, 200, "PDF wurde erstellt");
+        editEntry(newPC);
+        // res.download(pdf!, (err) => 
+        // {
+            
+        //     if(err) return endRes(res, 500, err.message);
+        //     endRes(res, 200, "OK");
+        // });
+        
+        //var file = fs.createReadStream(pdf!);
+        //var stat = fs.statSync(pdf!);
+        //res.setHeader('Content-Length', stat.size);
+        //res.setHeader('Content-Type', 'application/pdf');
+        //res.setHeader('Content-Disposition', 'attachment; filename='+x[0].ITNR);
+        //file.pipe(res);
+    })
+
+});
+
+//Bearbeite die PDF, bzw generiere sie mit den neuen Werten
+app.post("/pdf", async (req, res) => {
+
+    if(!req.headers.auth) return endRes(res, 400, "No auth header");
+    if(!req.headers.data) return endRes(res, 400, "No data header");
+    let auth = JSON.parse(req.headers.auth as string) as ICheckRequest;
+    let data = JSON.parse(req.headers.data as string) as {ITNr: string, type: IGetEntriesRequest["type"]};
+    if(!SessionUser(auth.username, auth.SessionID)) return endRes(res, 404, "Invalid Sesison/Username-Combo");
+    RefreshSession(auth.SessionID);
+    if(!data.ITNr) return endRes(res, 400, "No ITNr");
+    const p = path.join(__dirname, "..", "pdf", data.ITNr, "output.pdf");
+    if(!fs.existsSync(p)) return endRes(res, 409, "Datei existiert nicht und kann daher nicht bearbeiten werden");
+
+    const x:any = await getEntry(data.ITNr, {type: data.type}).catch(err => {
+        console.log("Fehler: ",err);
+        switch(err)
+        {
+            case 404: return endRes(res, 404, "File not found"); break;
+            default: return endRes(res, 500, "Internal Server Error\n\n"+JSON.stringify(err));
+        }
+    });
+    if(!x) return endRes(res, 500, "Internal Server Error\n\n");
+    const newPC:Item = {
+        kind: "PC",
+        it_nr: x[0].ITNR,
+        seriennummer: x[0].SN,
+        hersteller: x[0].HERSTELLER,
+        equipment: x[0].EQUIPMENT,
+        form: "Ja",
+        type: x[0].TYPE,
+        passwort: x[0].PASSWORT,
+        standort: x[0].STANDORT,
+        status: x[0].STATUS,
+        besitzer: x[0].BESITZER,
+    }
+    FillPDF(newPC).catch(err => {
+        if(err) endRes(res, 500, "Internal Server Error\n\n"+JSON.stringify(err));
+    }).then(pdf => {
+        endRes(res, 200, "PDF wurde neu erstellt, möchten Sie diese anzeigen?");
+    });
+});
+
+app.delete("/pdf", async (req, res) => {
+    if(!req.headers.auth) return endRes(res, 400, "No auth header");
+    if(!req.headers.data) return endRes(res, 400, "No data header");
+    let auth = JSON.parse(req.headers.auth as string) as ICheckRequest;
+    let data = JSON.parse(req.headers.data as string) as {ITNr: string, type: IGetEntriesRequest["type"]};
+    if(!SessionUser(auth.username, auth.SessionID)) return endRes(res, 404, "Invalid Sesison/Username-Combo");
+    RefreshSession(auth.SessionID);
+    if(!data.ITNr) return endRes(res, 400, "No ITNr");
+    const p = path.join(__dirname, "..", "pdf", data.ITNr, "output.pdf");
+    if(!fs.existsSync(p)) return endRes(res, 409, "Datei existiert nicht und kann daher nicht gelöscht werden");
+
+    const x:any = await getEntry(data.ITNr, {type: data.type}).catch(err => {
+        console.log("Fehler: ",err);
+        switch(err)
+        {
+            case 404: return endRes(res, 404, "File not found"); break;
+            default: return endRes(res, 500, "Internal Server Error\n\n"+JSON.stringify(err));
+        }
+    });
+    if(!x) return endRes(res, 500, "Internal Server Error\n\n");
+    try
+    {
+        const newPC:Item = {
+            kind: "PC",
+            it_nr: x[0].ITNR,
+            seriennummer: x[0].SN,
+            hersteller: x[0].HERSTELLER,
+            equipment: JSON.parse(x[0].EQUIPMENT),
+            form: "Nein",
+            type: x[0].TYPE,
+            passwort: x[0].PASSWORT,
+            standort: x[0].STANDORT,
+            status: x[0].STATUS,
+            besitzer: x[0].BESITZER,
+        }
+        setData(newPC, "POST", res, false).catch(err => {
+            if(err) return endRes(res, 500, "Internal Server Error\n\n"+JSON.stringify(err));
+            fs.unlink(p, err => {
+                if(err) return endRes(res, 500, "Internal Server Error\n\n"+JSON.stringify(err));
+                endRes(res, 200, "PDF wurde gelöscht");
+            });
+    
+        });
+    }
+    catch(err)
+    {
+        endRes(res, 500, "Internal Server Error\n\n"+JSON.stringify(err));
+    }
+    
+});
 
 app.get("/setMonitors", async (req, res) =>
 {
@@ -99,12 +291,14 @@ app.get("/setMonitors", async (req, res) =>
     let auth = JSON.parse(req.headers.auth as string) as ICheckRequest;
     let data = JSON.parse(req.headers.data as string) as {PCITNr: string, MonITNr: string[]};
     if(!SessionUser(auth.username, auth.SessionID)) return endRes(res, 404, "Invalid Sesison/Username-Combo");
+    RefreshSession(auth.SessionID);
     SetMonitors(data.MonITNr, data.PCITNr, res, true);
 })
 
 app.get("/refresh", async (req, res) => {
     if(!req.headers.auth) return endRes(res, 400, "No auth header");
     let auth = JSON.parse(req.headers.auth as string) as ICheckRequest;
+    console.log(Sessions);
     if(!SessionUser(auth.username, auth.SessionID)) return endRes(res, 404, "Invalid Sesison/Username-Combo");
     RefreshSession(auth.SessionID);
     endRes(res, 200, "Successfully refreshed");
@@ -144,7 +338,7 @@ app.get("/getEntries", async (req, res) => {
 app.get("/getEntry", async (req, res) => {
     let request = JSON.parse(req.headers.req as string) as IGetEntriesRequest;
     let auth = JSON.parse(req.headers.auth as string) as ICheckRequest;
-    if(!(await checkAuth(req, res, auth))) return;
+    if(!(await checkAuth(req, res, auth))) return endRes(res, 401, "User not authenticated");
     if(request.type == undefined) return endRes(res, 400, "No type");
 
     RefreshSession(auth.SessionID);
@@ -165,7 +359,6 @@ app.post("/", (req, res) => {
         message: "Hello World",
         status: 200
     });
-    console.log(req, res);
 
 });
 
@@ -176,7 +369,6 @@ app.put("/", (req, res) => {
         message: "Hello World",
         status: 200
     });
-    console.log(req, res);
 
 });
 
@@ -187,57 +379,50 @@ app.delete("/", (req, res) => {
         message: "Hello World",
         status: 200
     });
-    console.log(req, res);
 });
 
 // Change device data
 app.post("/setData", async (req, res) => {
+    console.log("SETDATA");
     if(req.headers.auth === undefined) return endRes(res, 400, "No auth header");
     if(req.headers.device === undefined) return endRes(res, 400, "No req header");
     const auth = JSON.parse(req.headers.auth as string) as ICheckRequest;
     const request = JSON.parse(req.headers.device as string) as Item;
     if(request === undefined) return endRes(res, 400, "No request");
-    if((await checkAuth(req, res, auth))) return;
+    console.table(request);
+    if(!(await checkAuth(req, res, auth))) return endRes(res, 401, "User not authenticated");
 
     RefreshSession(auth.SessionID);
-    setData(request, "POST");
-    endRes(res, 200, "Successfully changed data");
-
+    setData(request, "POST", res);
 });
 
 // Insert device data
-app.put("/setData", async(req, res) => {
-    console.log(req.headers);
-    
+app.put("/setData", async(req, res) => {    
     if(req.headers.auth === undefined) return endRes(res, 400, "No auth header");
     if(req.headers.device === undefined) return endRes(res, 400, "No req header");
     const auth = JSON.parse(req.headers.auth as string) as ICheckRequest;
     const request = JSON.parse(req.headers.device as string).device as Item;
     if(request === undefined) return endRes(res, 400, "No request");
-    console.log(request);
     console.table(auth);
     console.table(request);
-    console.log(JSON.stringify(request));
     if(!(await checkAuth(req, res, auth))) return;
 
     RefreshSession(auth.SessionID);
     console.log("Refreshed");
     
-    if(request.kind == "PC") setData(request, "PUT");
-    else if(request.kind == "Monitor") setData(request, "PUT");
+    if(["PC", "Monitor", "Phone", "Konferenz"].includes(request.kind)) setData(request, "PUT", res);
     else return endRes(res, 400, "Invalid kind");
-    endRes(res, 200, "Successfully changed data");
+    endRes(res, 200, "Successfully inserted data");
 });
 
 // Delete device data
 app.delete("/setData", async(req, res) => {
     const auth = JSON.parse(req.headers.auth as string) as ICheckRequest;
     const request = JSON.parse(req.headers.device as string) as Item;
-    if((await checkAuth(req, res, auth))) return;
+    if(!(await checkAuth(req, res, auth))) return endRes(res, 401, "User not authenticated");
 
     RefreshSession(auth.SessionID);
-    setData(request, "DELETE");
-    endRes(res, 200, "Successfully changed data");
+    setData(request, "DELETE", res);
 
 });
 
@@ -256,12 +441,22 @@ spdy.createServer(credentials, app).listen(5000, "0.0.0.0", () => {
     console.log("Server is running on port 5000");
 });
 
-export const endRes = (res:Response, status:number, message:string) => {
+export const endRes = (res:Response, status:number, message:string, pdf?:Buffer) => {
+    // console.log(status, message, pdf);
+    
+    if(pdf) 
+    {
+        console.log(pdf.length);
+        res.charset = "UTF-8";
+        res.type("pdf");
+        res.writeHead(status, { "Content-Type": "binary", "Content-Length": pdf.length, 'Content-Transfer-Encoding': 'binary' });	
+        res.write(pdf, "binary");
+        res.end(undefined, "binary")
+        return;
+    }
     res.writeHead(status, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({
-        message: message,
-        status: status
-    }));
+    res.end(JSON.stringify({message, status}));
+    
 }
 
 const assignNewKey = async (res:Response) => {

@@ -23,9 +23,7 @@ interface Device {
     status: string;
     standort: string;
     besitzer?: string;
-    form?: {
-        [path: string]: string;
-    };
+    form: string;
 }
 interface PCEntry extends Device
 {
@@ -47,7 +45,7 @@ let x:PCEntry = {
     hersteller: "Haug",
     passwort: "Passwort",
     besitzer: "Max Mustermann",
-    form: undefined
+    form: "Nein"
 }
 
 interface MonitorEntry extends Device
@@ -62,11 +60,14 @@ interface PhoneEntry extends Device
 {
     kind: "Phone";
     type: phoneTypes;
+    model: string;
 }
 
 interface KonferenzEntry extends Device
 {
     kind: "Konferenz";
+    hersteller: string;
+    model: string;
 }
 
 interface IEntry {
