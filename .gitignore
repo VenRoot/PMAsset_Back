@@ -2,6 +2,7 @@
 keys/
 out/
 test.ts
+pdf/
 
 # Logs
 logs
