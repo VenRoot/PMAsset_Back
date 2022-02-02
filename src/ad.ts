@@ -56,7 +56,7 @@ export const getUserInfo = (username: string, callback: (user?: any | null, err?
         'name'
     ];
 
-    const adFilter = (search:any) => [
+    const adFilter = (search:string) => [
         '(&(objectCategory=person)(objectClass=user)',
         '(|',
         `(initials=${search})`,
