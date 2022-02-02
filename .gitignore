@@ -4,6 +4,7 @@ out/
 test.ts
 pdf/
 
+!/start.js
 # Logs
 logs
 *.log
