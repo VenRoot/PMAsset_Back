@@ -122,5 +122,6 @@ export interface ICheckRequest
 
 export interface IGetEntriesRequest
 {
-    type: "PC" | "Monitor" | "Phone" | "Konferenz";
+    type: "PC" | "Monitor" | "Phone" | "Konferenz" | "MA" | "ALL";
+    Mail?: `${string}.${string}***REMOVED***.com`;
 }
