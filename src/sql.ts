@@ -6,6 +6,7 @@ import { IGetEntriesRequest, Item, PQuery, PQueryArray } from './interface';
 import path from "path";
 import { endRes } from '.';
 import { DeletePDF } from './pdf';
+import { AllUsers, getAllUsers, getUserInfo } from './ad';
 
 dotenv.config({path: path.join(__dirname, "..", '/.env')});
 
@@ -28,6 +29,28 @@ const config: sql.config = {
 export const getEntries = async (res: Response, type: IGetEntriesRequest) => {
     let q = "";
     console.log(type);
+    if(type.type == "ALL")
+    {
+        //Search for all entries which include the search string
+        if(!type.Mail) return endRes(res, 400, "No Mail provided");
+        
+        //Exectute the query in parallel and return the result
+        const [pc, mon, ph, konf] = await Promise.all([
+            query(`SELECT * FROM PC WHERE BESITZER LIKE '%${type.Mail}%'`),
+            query(`SELECT * FROM MONITOR WHERE BESITZER LIKE '%${type.Mail}%'`),
+            query(`SELECT * FROM PHONE WHERE BESITZER LIKE '%${type.Mail}%'`),
+            query(`SELECT * FROM KONFERENZ WHERE BESITZER LIKE '%${type.Mail}%'`)
+        ]);
+        return endRes(res, 200, JSON.stringify({pc: pc.recordset, mon: mon.recordset, ph: ph.recordset, konf: konf.recordset}));
+    }
+    else if(type.type == "MA")
+    {
+        if(!AllUsers) return endRes(res, 200, JSON.stringify(AllUsers));
+        
+        const users = await getAllUsers();
+        return endRes(res, 200, JSON.stringify(users));
+
+    }
     switch(type.type)
     {
         case "PC": q = "SELECT * FROM PC"; break;
