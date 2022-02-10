@@ -176,12 +176,12 @@ export const editEntry = async (entry: Item) => {
                 {name: "equipment", value: JSON.stringify(entry.equipment), type: sql.VarChar}, 
                 {name: "standort", value: entry.standort, type: sql.VarChar}]);
 
-            if(entry.form == "Nein") DeletePDF(entry);
+            if(entry.form == "Nein") DeletePDF(entry).then((e) => e ? console.log("PDF deleted") : null);
             break;
             case "Phone": 
             query(`UPDATE [dbo].[PHONE] SET ITNR = @ITNR, SN = @SN, MODEL = @MODEL, STANDORT = @STANDORT, STATUS = @STATUS, BESITZER = @BESITZER, FORM = @FORM WHERE ITNR = @ITNR`, [
                 {name: "ITNR", value: entry.it_nr, type: sql.VarChar}, 
-                {name: "SM", value: entry.seriennummer, type: sql.VarChar}, 
+                {name: "SN", value: entry.seriennummer, type: sql.VarChar}, 
                 {name: "MODEL", value: entry.model, type: sql.VarChar}, 
                 {name: "STANDORT", value: entry.standort, type: sql.VarChar}, 
                 {name: "STATUS", value: entry.status, type: sql.VarChar}, 

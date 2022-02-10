@@ -56,7 +56,7 @@ export const FillPDF  = (data: Item): Promise<string> => {
 export const DeletePDF = (data: Item): Promise<boolean> => {
     return new Promise((resolve, reject) => {
         const source = path.join(__dirname, "..", "pdf", data.it_nr, "output.pdf");
-        if(!fs.existsSync(source)) return reject("No file");
+        if(!fs.existsSync(source)) return resolve(false);
         fs.unlink(source, (err) => {
             if(err) return reject(err);
             resolve(true);
