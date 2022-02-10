@@ -465,3 +465,11 @@ const assignNewKey = async (res:Response) => {
     Sessions.push({id: key, date: new Date()});
     return endRes(res, 200, key);
 };
+
+
+process.on("uncaughtException", (err) => {
+    console.log("uncaughtException: ", err);
+    //Write to error log
+    fs.appendFileSync(path.join(__dirname, '..', 'logs', 'error.log'), `${new Date()}: ${err}\n`);
+    
+});
