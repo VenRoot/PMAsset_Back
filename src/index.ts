@@ -21,6 +21,7 @@ import https from "http2";
 import spdy from "spdy";
 import { setData, SetMonitors } from "./logic";
 import { FillPDF } from "./pdf";
+import { isCryptoKey } from "util/types";
 
 if(process.env.TEST_USER === undefined || process.env.TEST_PASSWD === undefined) throw new Error("No test user or password");
 
@@ -147,16 +148,16 @@ app.put("/pdf", async(req, res) => {
     
 
     
-    const x:any = await getEntry(data.ITNr, {type: data.type}).catch(err => {
+    const x = await getEntry(data.ITNr, {type: data.type}).catch(err => {
         console.log("Fehler: ",err);
         switch(err)
         {
             case 404: return endRes(res, 404, "File not found"); break;
             default: return endRes(res, 500, "Internal Server Error\n\n"+JSON.stringify(err));
         }
-    });
-    if(!x) return endRes(res, 500, "Internal Server Error\n\n");
-    fs.mkdirSync(path.join(__dirname, "..", "pdf", data.ITNr));
+    }) as IRecordSet<any>
+    console.log(x);
+    if(!fs.existsSync(path.dirname(p)))fs.mkdirSync(path.dirname(p));
     const newPC:Item = {
         kind: "PC",
         it_nr: x[0].ITNR,
@@ -443,6 +444,7 @@ spdy.createServer(credentials, app).listen(5000, "0.0.0.0", () => {
 
 export const endRes = (res:Response, status:number, message:string, pdf?:Buffer) => {
     // console.log(status, message, pdf);
+    console.log(status, message);
     
     if(pdf) 
     {
