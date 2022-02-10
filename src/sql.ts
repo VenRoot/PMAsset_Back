@@ -7,6 +7,7 @@ import path from "path";
 import { endRes } from '.';
 import { DeletePDF } from './pdf';
 import { AllUsers, getAllUsers, getUserInfo } from './ad';
+import { emitKeypressEvents } from 'readline';
 
 dotenv.config({path: path.join(__dirname, "..", '/.env')});
 
@@ -78,13 +79,13 @@ export const getEntry = async (ITNr: string, type: IGetEntriesRequest):Promise<s
         case "Monitor": q = "SELECT * FROM MONITOR WHERE ITNR = @itnr"; break;
         case "Phone": q = "SELECT * FROM PHONE WHERE ITNR = @itnr"; break;
         case "Konferenz": q= "SELECT * FROM KONFERENZ WHERE ITNR = @itnr"; break;
-        default: throw "No Type";
+        default: Promise.reject("No Type");
     }
     const result = await query(q, [{name: "itnr", value: ITNr, type: sql.VarChar}]).catch(err => {
         console.error(err);
-        throw err;
+        Promise.reject(err);
     });
-    if(!result) throw 404;
+    if(!result) return Promise.reject(404);
     return result.recordset;
 }
 
@@ -93,6 +94,8 @@ export const addEntry = (entry: Item) => {
     return new Promise((resolve, reject) => {
     console.table(entry);
     if(entry.kind == "PC" && !entry.equipment) entry.equipment = [];
+    if(entry.kind == "PC" && typeof entry.equipment == "string") entry.equipment = JSON.parse(entry.equipment);
+
     switch(entry.kind)
     {
         case "Monitor": 
@@ -144,6 +147,7 @@ export const addEntry = (entry: Item) => {
 
 export const editEntry = async (entry: Item) => {
     if(entry.kind == "PC" && !entry.equipment) entry.equipment = [];
+    if(entry.kind == "PC" && typeof entry.equipment == "string") entry.equipment = JSON.parse(entry.equipment);
     
 
 
@@ -212,6 +216,7 @@ export const editEntry = async (entry: Item) => {
  */
 export const deleteEntry = async (entry: Item) => {
     if(entry.kind == "PC" && !entry.equipment) entry.equipment = [];
+    if(entry.kind == "PC" && typeof entry.equipment == "string") entry.equipment = JSON.parse(entry.equipment);
     switch(entry.kind)
     {
         case "Konferenz":
