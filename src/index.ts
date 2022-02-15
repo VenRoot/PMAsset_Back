@@ -23,6 +23,7 @@ import spdy from "spdy";
 import { setData, SetMonitors } from "./logic";
 import { FillPDF } from "./pdf";
 import { Blob } from "buffer";
+import { isCryptoKey } from "util/types";
 
 if(process.env.TEST_USER === undefined || process.env.TEST_PASSWD === undefined) throw new Error("No test user or password");
 
@@ -183,7 +184,7 @@ app.put("/pdf", async(req, res) => {
     
 
     
-    const x:any = await getEntry(data.ITNr, {type: data.type}).catch(err => {
+    const x = await getEntry(data.ITNr, {type: data.type}).catch(err => {
         console.log("Fehler: ",err);
         switch(err)
         {
@@ -499,6 +500,7 @@ spdy.createServer(credentials, app).listen(5000, "0.0.0.0", () => {
 
 export const endRes = (res:Response, status:number, message:string, pdf?:Buffer) => {
     // console.log(status, message, pdf);
+    console.log(status, message);
     
     if(pdf) 
     {
