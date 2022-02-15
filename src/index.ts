@@ -1,6 +1,7 @@
 import dotenv from "dotenv";
 import path from "path";
 import os from "os";
+import multer from "multer";
 import md5 from "md5";
 dotenv.config({path: path.join(__dirname, "../.env")});
 
@@ -21,13 +22,18 @@ import https from "http2";
 import spdy from "spdy";
 import { setData, SetMonitors } from "./logic";
 import { FillPDF } from "./pdf";
+import { Blob } from "buffer";
 
 if(process.env.TEST_USER === undefined || process.env.TEST_PASSWD === undefined) throw new Error("No test user or password");
 
 // const apiKeyAuth = require('api-key-auth');
 const app = express();
+const router = express.Router();
+const storage = multer.memoryStorage();
+const upload = multer({storage: storage});
 
-app.use(express.json());
+app.use(express.json({ limit: "50mb", type: "application/binary" }));
+app.use(express.raw({limit: "50mb", type: "application/binary"}));
 app.use(helmet());
 app.use(bodyParser.json());
 app.use(cors());
@@ -133,12 +139,42 @@ const hexEncode = function(res:string){
     return result
 }
 
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: false }));
 
+app.post("/CustomPDF", upload.single("file"), async (req, res) => {
+    if(!req.headers.auth) return endRes(res, 400, "No auth header");
+    // if(!req.headers.data) return endRes(res, 400, "No data header");
+    if(!req.file) return endRes(res, 400, "No file");
+    let auth = JSON.parse(req.headers.auth as string) as ICheckRequest;
+    let data = JSON.parse(req.headers.data as string) as {ITNr: string, pdf: string};
+    if(!SessionUser(auth.username, auth.SessionID)) return endRes(res, 404, "Invalid Sesison/Username-Combo");
+    RefreshSession(auth.SessionID);
+    if(!data.ITNr) return endRes(res, 400, "No ITNr");
+    
+    const file = req.file.buffer;
+    const type = req.file.mimetype;
+    const name = req.file.originalname;
+    const size = req.file.size;
+    console.log(file, type, name, size);
+
+    if(!fs.existsSync(path.join(__dirname, "..", "pdf", data.ITNr))) fs.mkdirSync(path.join(__dirname, "..", "pdf", data.ITNr), {recursive: true});
+    
+    fs.writeFileSync(path.join(__dirname, "..", "pdf", data.ITNr, "output.pdf"), file, {encoding: "binary", flag: "w"});
+
+
+    endRes(res, 200, `File ${name} uploaded!`);
+});
+
+app.use(bodyParser.raw());
+// app.use(bodyParser.urlencoded({ extended: true }));
 app.put("/pdf", async(req, res) => {
+    
     if(!req.headers.auth) return endRes(res, 400, "No auth header");
     if(!req.headers.data) return endRes(res, 400, "No data header");
     let auth = JSON.parse(req.headers.auth as string) as ICheckRequest;
-    let data = JSON.parse(req.headers.data as string) as {ITNr: string, type: IGetEntriesRequest["type"]};
+    let data = JSON.parse(req.headers.data as string) as {ITNr: string, type: IGetEntriesRequest["type"], own?:boolean, file?: string};
+
     if(!SessionUser(auth.username, auth.SessionID)) return endRes(res, 404, "Invalid Sesison/Username-Combo");
     RefreshSession(auth.SessionID);
     if(!data.ITNr) return endRes(res, 400, "No ITNr");
@@ -156,7 +192,18 @@ app.put("/pdf", async(req, res) => {
         }
     });
     if(!x) return endRes(res, 500, "Internal Server Error\n\n");
-    fs.mkdirSync(path.join(__dirname, "..", "pdf", data.ITNr));
+    if(!fs.existsSync(path.dirname(p))) fs.mkdirSync(path.dirname(p));
+
+    if(data.own)
+    {
+        console.log("Bearbeite PDF mit neuen Werten");
+        
+        //The body is in binary, so we need to parseit in express
+        
+        endRes(res, 200, "PDF wurde abgelegt");
+        return;
+    }
+
     const newPC:Item = {
         kind: "PC",
         it_nr: x[0].ITNR,
@@ -233,6 +280,15 @@ app.post("/pdf", async (req, res) => {
         endRes(res, 200, "PDF wurde neu erstellt, möchten Sie diese anzeigen?");
     });
 });
+
+function toBuffer(ab:ArrayBuffer):Buffer {
+    const buf = Buffer.alloc(ab.byteLength);
+    const view = new Uint8Array(ab);
+    for (let i = 0; i < buf.length; ++i) {
+        buf[i] = view[i];
+    }
+    return buf;
+}
 
 app.delete("/pdf", async (req, res) => {
     if(!req.headers.auth) return endRes(res, 400, "No auth header");
