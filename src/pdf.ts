@@ -3,7 +3,9 @@ import path from "path";
 import { getUserInfo } from "./ad";
 import { Item } from "./interface";
 import fs from "fs";
+import os from "os";
 import { exec, execSync } from "child_process";
+import { openStdin } from "process";
 
 export const FillPDF  = (data: Item): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -35,10 +37,17 @@ export const FillPDF  = (data: Item): Promise<string> => {
         try
         {
             const command = `python3 ${path.join(__dirname, "..", "fill.py")} ${values.join(" ")}`;
-            console.log(command);
-            let y = exec(command);
+            const commandWin = `python ${path.join(__dirname, "..", "fill.py")} ${values.join(" ")}`;
+            let y;
+            console.log(os.platform())
+            if(os.platform() == "win32") y = exec(commandWin)
+            else y = exec(command);
+            console.log(commandWin);
+            y.on("error", (err) => {
+                reject(err.message);
+            });
+            y.on("message", console.log)
             y.on("exit", (code) => {
-                if(code != 0) reject("Error");
                 resolve(output);
             });
         }

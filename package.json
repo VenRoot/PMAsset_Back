@@ -9,10 +9,10 @@
     "build": "npm run clean && tsc",
     "build:windows": "npm run clean:windows && tsc",
     "start": "node start.js",
-    "start:widnows": "npm run build:windows && node out/index.js",
+    "start:windows": "npm run build:windows && node out/index.js",
     "start:linux": "npm run build && node out/index.js",
     "clean": "rm -rf ./out/*",
-    "clean:windows": "del .\\out\\*.*"
+    "clean:windows": "rmdir .\\out\\ /s /q"
   },
   "repository": {
     "type": "git",
