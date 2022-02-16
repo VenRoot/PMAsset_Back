@@ -53,7 +53,7 @@ export const allowedUsers =
 
 //make a function which will return a callback
 export const checkUser = (username: string, password: string, callback: (user?: boolean | null, err?: string) => void) => {
-    if(!allowedUsers.includes(username)) return callback(null, "Dieser User ist nicht für die AD-Anmeldung freigegeben");
+    if(!allowedUsers.includes(username.split("@")[0])) return callback(null, "Dieser User ist nicht für die AD-Anmeldung freigegeben");
     // if(process.env.DEVMODE == "true") return callback(true);
     //@ts-ignore
     ad.authenticate(username, password, (err: err, auth) => {
