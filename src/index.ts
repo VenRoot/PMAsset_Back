@@ -24,6 +24,7 @@ import { setData, SetMonitors } from "./logic";
 import { FillPDF } from "./pdf";
 import { Blob } from "buffer";
 import { isCryptoKey } from "util/types";
+import { writeLog } from "./logs";
 
 if(process.env.TEST_USER === undefined || process.env.TEST_PASSWD === undefined) throw new Error("No test user or password");
 
@@ -76,19 +77,19 @@ app.get("/auth", async (req, res) => {
                 if(err) return endRes(res, 401, err);
                 if(value) {
                     
-                    if(Sessions[session].user?.authenticated) return endRes(res, 403, "Session already has a user logged in"); //Check if user is already logged in
-                    if(checkAlreadyLoggedIn(auth.username as string)) return endRes(res, 403, "The User is already logged in from another session!");  //Check if the user is already logged in from another session
+                    if(Sessions[session].user?.authenticated) return endRes(res, 403, "Session already has a user logged in", undefined, writeLog("Diese Sitzung wird bereits von einem anderen User benutzt", "WAR", "getUN", auth.username!)); //Check if user is already logged in
+                    if(checkAlreadyLoggedIn(auth.username as string)) return endRes(res, 403, "The User is already logged in from another session!", undefined, writeLog("User ist bereits von einem anderen Client angemeldet", "WAR", "getUN", auth.username!));  //Check if the user is already logged in from another session
                     Sessions[session].user = {username: auth.username as string, authenticated: true};
                     console.log(Sessions[session]);
                     Sessions[session].date = new Date(); //Update session date to keep it alive
-                    return endRes(res, 200, "Successfully logged in");
+                    return endRes(res, 200, "Successfully logged in", undefined, writeLog("User erfolgreich angemeldet", "VER", "getUN", auth.username!));
                 }
             });
     }
     else if(auth.type === "Logout")
     {
         let session = Sessions.findIndex(session => session.id === auth.SessionID);
-        if(session === -1) return endRes(res, 404, "Session not found or expired");
+        if(session === -1) return endRes(res, 404, "Session not found or expired", undefined, writeLog("Session nicht gefunden oder abgelaufen", "VER", "getUN", auth.username!));
         Sessions.splice(session, 1);
         return endRes(res, 200, "Successfully logged out");
     }
@@ -166,7 +167,7 @@ app.post("/CustomPDF", upload.single("file"), async (req, res) => {
     
     fs.writeFileSync(path.join(__dirname, "..", "pdf", data.ITNr, "output.pdf"), file, {encoding: "binary", flag: "w"});
 
-
+    writeLog(auth.username+" hat eine PDF für "+data.ITNr+" überschrieben", "INF", "setPD", auth.username);
     endRes(res, 200, `File ${name} uploaded!`);
 });
 
@@ -183,15 +184,15 @@ app.put("/pdf", async(req, res) => {
     RefreshSession(auth.SessionID);
     if(!data.ITNr) return endRes(res, 400, "No ITNr");
     const p = path.join(__dirname, "..", "pdf", data.ITNr, "output.pdf");
-    if(fs.existsSync(p)) return endRes(res, 409, "File already exists");
-    
+    if(fs.existsSync(p)) return endRes(res, 409, "File already exists", undefined, writeLog("PDF für "+data.ITNr+" konnte nicht geschrieben werden, da die Datei bereits existiert", "ERR", "setPC", auth.username));
 
     
     const x = await getEntry(data.ITNr, {type: data.type}).catch(err => {
         console.log("Fehler: ",err);
+        writeLog("Fehler beim Abrufen der Einträge: "+err, "ERR", "setPC", auth.username);
         switch(err)
         {
-            case 404: return endRes(res, 404, "Entry not found"); break;
+            case 404: return endRes(res, 404, "Entry not found");
             default: return endRes(res, 500, "Internal Server Error\n\n"+JSON.stringify(err));
         }
     });
@@ -204,7 +205,7 @@ app.put("/pdf", async(req, res) => {
         
         //The body is in binary, so we need to parseit in express
         
-        endRes(res, 200, "PDF wurde abgelegt");
+        endRes(res, 200, "PDF wurde abgelegt", undefined, writeLog("PDF für "+data.ITNr+" wurde abgelegt", "INF", "setPC", auth.username));
         return;
     }
 
@@ -222,8 +223,10 @@ app.put("/pdf", async(req, res) => {
         besitzer: x[0].BESITZER,
     }
     FillPDF(newPC).catch(err => {
-        if(err) endRes(res, 500, "Internal Server Error\n\n"+JSON.stringify(err));
-    }).then(pdf => {
+        writeLog("Fehler beim Erstellen der PDF: "+err, "ERR", "setPC", auth.username);
+        endRes(res, 500, "Internal Server Error\n\n"+JSON.stringify(err));
+    }).then(() => {
+        writeLog("PDF für "+data.ITNr+" wurde erstellt", "INF", "setPC", auth.username);
         endRes(res, 200, "PDF wurde erstellt");
         editEntry(newPC);
         // res.download(pdf!, (err) => 
@@ -252,19 +255,22 @@ app.post("/pdf", async (req, res) => {
     let data = JSON.parse(req.headers.data as string) as {ITNr: string, type: IGetEntriesRequest["type"]};
     if(!SessionUser(auth.username, auth.SessionID)) return endRes(res, 404, "Invalid Sesison/Username-Combo");
     RefreshSession(auth.SessionID);
-    if(!data.ITNr) return endRes(res, 400, "No ITNr");
+    if(!data.ITNr) return endRes(res, 400, "No ITNr", undefined, writeLog(`Fehler beim Bearbeiten der PDF: Keine ITNr`, "ERR", "setPC", auth.username));
     const p = path.join(__dirname, "..", "pdf", data.ITNr, "output.pdf");
-    if(!fs.existsSync(p)) return endRes(res, 409, "Datei existiert nicht und kann daher nicht bearbeiten werden");
+    if(!fs.existsSync(p)) return endRes(res, 409, "Datei existiert nicht und kann daher nicht bearbeiten werden", undefined, writeLog(`Fehler beim Bearbeiten der PDF: PDF für ${data.ITNr} existiert nicht`, "ERR", "setPC", auth.username));
 
     const x:any = await getEntry(data.ITNr, {type: data.type}).catch(err => {
         console.log("Fehler: ",err);
         switch(err)
         {
-            case 404: return endRes(res, 404, "File not found"); break;
+            case 404: return endRes(res, 404, "File not found", undefined, writeLog("Der Eintrag, dessen eine PDF angehängt werden sollte, wurde nicht gefunden", "ERR", "setPC", auth.username)); break;
             default: return endRes(res, 500, "Internal Server Error\n\n"+JSON.stringify(err));
         }
     });
-    if(!x) return endRes(res, 500, "Internal Server Error\n\n");
+    if(!x) {
+        writeLog(`Fehler beim Bearbeiten der PDF: Eintrag existiert nicht in der DB`, "ERR", "setPC", auth.username);
+        return endRes(res, 500, "Internal Server Error\n\n");
+    }
     const newPC:Item = {
         kind: "PC",
         it_nr: x[0].ITNR,
@@ -279,8 +285,10 @@ app.post("/pdf", async (req, res) => {
         besitzer: x[0].BESITZER,
     }
     FillPDF(newPC).catch(err => {
-        if(err) endRes(res, 500, "Internal Server Error\n\n"+JSON.stringify(err));
+        writeLog("Fehler beim Bearbeiten der PDF: "+err, "ERR", "setPC", auth.username);
+        endRes(res, 500, "Internal Server Error\n\n"+JSON.stringify(err));
     }).then(pdf => {
+        writeLog(`PDF für ${data.ITNr} wurde erstellt`, "INF", "setPC", auth.username);
         endRes(res, 200, "PDF wurde neu erstellt, möchten Sie diese anzeigen?");
     });
 });
@@ -303,17 +311,17 @@ app.delete("/pdf", async (req, res) => {
     RefreshSession(auth.SessionID);
     if(!data.ITNr) return endRes(res, 400, "No ITNr");
     const p = path.join(__dirname, "..", "pdf", data.ITNr, "output.pdf");
-    if(!fs.existsSync(p)) return endRes(res, 409, "Datei existiert nicht und kann daher nicht gelöscht werden");
+    if(!fs.existsSync(p)) return endRes(res, 409, "Datei existiert nicht und kann daher nicht gelöscht werden", undefined, writeLog(`Fehler beim Löschen der PDF: PDF für ${data.ITNr} existiert nicht`, "ERR", "setPC", auth.username));
 
     const x:any = await getEntry(data.ITNr, {type: data.type}).catch(err => {
         console.log("Fehler: ",err);
         switch(err)
         {
-            case 404: return endRes(res, 404, "File not found"); break;
-            default: return endRes(res, 500, "Internal Server Error\n\n"+JSON.stringify(err));
+            case 404: return endRes(res, 404, "File not found", undefined, writeLog("Der Eintrag für das Gerät wurde nicht gefunden", "ERR", "setPC", auth.username));
+            default: return endRes(res, 500, "Internal Server Error\n\n"+JSON.stringify(err), undefined, writeLog("Fehler beim Löschen der PDF: "+err, "ERR", "setPC", auth.username));
         }
     });
-    if(!x) return endRes(res, 500, "Internal Server Error\n\n");
+    if(!x) return endRes(res, 500, "Internal Server Error\n\n", undefined, writeLog("Fehler beim Löschen der PDF: Eintrag existiert nicht in der DB", "ERR", "setPC", auth.username));
     try
     {
         const newPC:Item = {
@@ -330,9 +338,9 @@ app.delete("/pdf", async (req, res) => {
             besitzer: x[0].BESITZER,
         }
         setData(newPC, "POST", res, false).catch(err => {
-            if(err) return endRes(res, 500, "Internal Server Error\n\n"+JSON.stringify(err));
+            if(err) return endRes(res, 500, "Internal Server Error\n\n"+JSON.stringify(err), undefined, writeLog("Fehler beim Löschen der PDF: "+err, "ERR", "setPC", auth.username));
             fs.unlink(p, err => {
-                if(err) return endRes(res, 500, "Internal Server Error\n\n"+JSON.stringify(err));
+                if(err) return endRes(res, 500, "Internal Server Error\n\n"+JSON.stringify(err), undefined, writeLog("Fehler beim Löschen der PDF: "+err, "ERR", "setPC", auth.username));
                 endRes(res, 200, "PDF wurde gelöscht");
             });
     
@@ -340,7 +348,7 @@ app.delete("/pdf", async (req, res) => {
     }
     catch(err)
     {
-        endRes(res, 500, "Internal Server Error\n\n"+JSON.stringify(err));
+        endRes(res, 500, "Internal Server Error\n\n"+JSON.stringify(err), undefined, writeLog("Fehler beim Löschen der PDF: "+err, "ERR", "setPC", auth.username));
     }
     
 });
@@ -350,9 +358,10 @@ app.get("/setMonitors", async (req, res) =>
     if(!req.headers.auth) return endRes(res, 400, "No auth header");
     let auth = JSON.parse(req.headers.auth as string) as ICheckRequest;
     let data = JSON.parse(req.headers.data as string) as {PCITNr: string, MonITNr: string[]};
-    if(!SessionUser(auth.username, auth.SessionID)) return endRes(res, 404, "Invalid Sesison/Username-Combo");
+    if(!SessionUser(auth.username, auth.SessionID)) return endRes(res, 404, "Invalid Sesison/Username-Combo", undefined, writeLog("Invalid Sesison/Username-Combo", "ERR", "setMn", auth.username));
     RefreshSession(auth.SessionID);
     SetMonitors(data.MonITNr, data.PCITNr, res, true);
+    writeLog(`Monitor ${data.MonITNr} wurde ${data.PCITNr} zugeordnet`, "INF", "setMn", auth.username);
 })
 
 app.get("/refresh", async (req, res) => {
@@ -388,7 +397,7 @@ app.get("/getEntries", async (req, res) => {
     let request = JSON.parse(req.headers.req as string) as IGetEntriesRequest;
     let auth = JSON.parse(req.headers.auth as string) as ICheckRequest;
     if(!(await checkAuth(req, res, auth))) return;
-    if(request.type == undefined) return endRes(res, 400, "No type");
+    if(request.type == undefined) return endRes(res, 400, "No type", undefined, writeLog("Kein Typ angegeben", "ERR", "getPC", auth.username));
     RefreshSession(auth.SessionID);
     let result = await getEntries(res, request);
     //Check if result is type of IRecordSet
@@ -398,8 +407,8 @@ app.get("/getEntries", async (req, res) => {
 app.get("/getEntry", async (req, res) => {
     let request = JSON.parse(req.headers.req as string) as IGetEntriesRequest;
     let auth = JSON.parse(req.headers.auth as string) as ICheckRequest;
-    if(!(await checkAuth(req, res, auth))) return endRes(res, 401, "User not authenticated");
-    if(request.type == undefined) return endRes(res, 400, "No type");
+    if(!(await checkAuth(req, res, auth))) return endRes(res, 401, "User not authenticated", undefined, writeLog("User not authenticated", "ERR", "getPC", auth.username));
+    if(request.type == undefined) return endRes(res, 400, "No type", undefined, writeLog("Kein Typ angegeben", "ERR", "getPC", auth.username));
 
     RefreshSession(auth.SessionID);
     let result = await getEntries(res, request);
@@ -501,7 +510,7 @@ spdy.createServer(credentials, app).listen(5000, "0.0.0.0", () => {
     console.log("Server is running on port 5000");
 });
 
-export const endRes = (res:Response, status:number, message:string, pdf?:Buffer) => {
+export const endRes = (res:Response, status:number, message:string, pdf?:Buffer, Log?: Function) => {
     res.writeHead(status, { "Content-Type": "application/json" });
     res.end(JSON.stringify({message, status}));
 }
