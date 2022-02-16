@@ -14,8 +14,12 @@ values = {
             "Laptop Typ" : sys.argv[4],
             "SerienNr" : sys.argv[5],
             "Zub" : "",
-            "Datum" : sys.argv[6],
-            "DatumR" : ""
+            "DatumR1" : sys.argv[6],
+            "DatumR" : sys.argv[6],
+            "Datum2" : sys.argv[6],
+            
+            #Nur bei Rückgabe 
+            "DatumR2" : ""
 }
 
 
