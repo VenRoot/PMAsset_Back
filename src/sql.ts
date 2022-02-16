@@ -85,6 +85,8 @@ export const getEntry = async (ITNr: string, type: IGetEntriesRequest):Promise<s
         console.error(err);
         Promise.reject(err);
     });
+    console.log(result);
+    console.log("GEHOLT")
     if(!result) return Promise.reject(404);
     return result.recordset;
 }

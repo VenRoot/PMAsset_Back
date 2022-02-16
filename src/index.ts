@@ -123,9 +123,12 @@ app.get("/pdf", async(req, res) => {
     //Check if data.ITNr is a path, check, if the path exists and is a pdf
     const p = path.join(__dirname, "..", "pdf", data.ITNr, "output.pdf");
     if(!fs.existsSync(p)) return endRes(res, 404, "File not found");
-
-    const file = Buffer.from(fs.readFileSync(p, "binary"), "binary");
-    endRes(res, 200, "OK" , file);
+    const file = fs.createReadStream(p);
+    const stat = fs.statSync(p);
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Length", stat.size);
+    res.setHeader("Content-Disposition", `attachment; filename=${data.ITNr}.pdf`);
+    file.pipe(res);
 });
 
 const hexEncode = function(res:string){
@@ -188,7 +191,7 @@ app.put("/pdf", async(req, res) => {
         console.log("Fehler: ",err);
         switch(err)
         {
-            case 404: return endRes(res, 404, "File not found"); break;
+            case 404: return endRes(res, 404, "Entry not found"); break;
             default: return endRes(res, 500, "Internal Server Error\n\n"+JSON.stringify(err));
         }
     });
@@ -458,7 +461,7 @@ app.put("/setData", async(req, res) => {
     if(req.headers.auth === undefined) return endRes(res, 400, "No auth header");
     if(req.headers.device === undefined) return endRes(res, 400, "No req header");
     const auth = JSON.parse(req.headers.auth as string) as ICheckRequest;
-    const request = JSON.parse(req.headers.device as string).device as Item;
+    const request = JSON.parse(req.headers.device as string) as Item;
     if(request === undefined) return endRes(res, 400, "No request");
     console.table(auth);
     console.table(request);
@@ -499,22 +502,8 @@ spdy.createServer(credentials, app).listen(5000, "0.0.0.0", () => {
 });
 
 export const endRes = (res:Response, status:number, message:string, pdf?:Buffer) => {
-    // console.log(status, message, pdf);
-    console.log(status, message);
-    
-    if(pdf) 
-    {
-        console.log(pdf.length);
-        res.charset = "UTF-8";
-        res.type("pdf");
-        res.writeHead(status, { "Content-Type": "binary", "Content-Length": pdf.length, 'Content-Transfer-Encoding': 'binary' });	
-        res.write(pdf, "binary");
-        res.end(undefined, "binary")
-        return;
-    }
     res.writeHead(status, { "Content-Type": "application/json" });
     res.end(JSON.stringify({message, status}));
-    
 }
 
 const assignNewKey = async (res:Response) => {

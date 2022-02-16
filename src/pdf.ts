@@ -42,12 +42,15 @@ export const FillPDF  = (data: Item): Promise<string> => {
             console.log(os.platform())
             if(os.platform() == "win32") y = exec(commandWin)
             else y = exec(command);
-            console.log(commandWin);
+            console.log(os.platform() == "win32" ? commandWin : command);
             y.on("error", (err) => {
                 reject(err.message);
             });
             y.on("message", console.log)
             y.on("exit", (code) => {
+                console.log(code);
+                if(code == 0) resolve(output);
+                else reject(`Error code ${code}`);
                 resolve(output);
             });
         }
