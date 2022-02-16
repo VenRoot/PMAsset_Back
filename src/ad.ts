@@ -183,7 +183,6 @@ export const getUserInfo = (username: string, callback: (user?: any | null, err?
     //@ts-ignore
     ad.findUser(opt, username, (err, user) => {
         if (err) throw err;
-        console.log(user);
         if (err) return callback(undefined, err as any);
 
         callback(user as any);
