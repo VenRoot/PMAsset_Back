@@ -25,9 +25,35 @@ interface err {
 export const generateSessionID = (): string => bcrypt.hashSync(crypto.randomBytes(64), 10);
 
 
+export const allowedUsers = 
+[
+    "***REMOVED***",
+    "***REMOVED***",
+    "***REMOVED***",
+    "***REMOVED***",
+    "***REMOVED***",
+    "***REMOVED***",
+    "***REMOVED***",
+    "***REMOVED***",
+    "***REMOVED***",
+    "***REMOVED***",
+    "***REMOVED***",
+    "***REMOVED***",
+    "***REMOVED***",
+    "***REMOVED***",
+    "***REMOVED***",
+    "***REMOVED***",
+    "***REMOVED***",
+    "***REMOVED***",
+    "***REMOVED***",
+    "***REMOVED***",
+    "***REMOVED***",
+    "***REMOVED***"
+];
 
 //make a function which will return a callback
 export const checkUser = (username: string, password: string, callback: (user?: boolean | null, err?: string) => void) => {
+    if(!allowedUsers.includes(username)) return callback(null, "Dieser User ist nicht für die AD-Anmeldung freigegeben");
     // if(process.env.DEVMODE == "true") return callback(true);
     //@ts-ignore
     ad.authenticate(username, password, (err: err, auth) => {
