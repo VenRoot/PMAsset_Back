@@ -42,14 +42,14 @@ export const getEntries = async (res: Response, type: IGetEntriesRequest) => {
             query(`SELECT * FROM PHONE WHERE BESITZER LIKE '%${type.Mail}%'`),
             query(`SELECT * FROM KONFERENZ WHERE BESITZER LIKE '%${type.Mail}%'`)
         ]);
-        return endRes(res, 200, JSON.stringify({pc: pc.recordset, mon: mon.recordset, ph: ph.recordset, konf: konf.recordset}));
+        return endRes(res, 200, JSON.stringify({pc: pc.recordset, mon: mon.recordset, ph: ph.recordset, konf: konf.recordset}), true);
     }
     else if(type.type == "MA")
     {
-        if(!AllUsers) return endRes(res, 200, JSON.stringify(AllUsers));
+        if(!AllUsers) return endRes(res, 200, JSON.stringify(AllUsers), true);
         
         const users = await getAllUsers();
-        return endRes(res, 200, JSON.stringify(users));
+        return endRes(res, 200, JSON.stringify(users), true);
 
     }
     switch(type.type)
@@ -110,7 +110,7 @@ export const addEntry = (entry: Item) => {
                 {name: "standort", value: entry.standort, type: sql.VarChar},
                 {name: "status", value: entry.status, type: sql.VarChar}, 
                 {name: "besitzer", value: entry.besitzer, type: sql.VarChar}, 
-                {name: "form", value: entry.form, type: sql.VarChar}]);
+                {name: "form", value: entry.form || "Nein", type: sql.VarChar}]);
             break;
         case "PC":
             console.log(`INSERT INTO [dbo].[PC] VALUES ("${entry.it_nr}", "${entry.seriennummer}", "${entry.hersteller}", "${entry.type}", "${entry.status}", "${entry.besitzer || ""}", "${entry.form}", "${entry.passwort}", "${entry.equipment}", "${entry.standort}")`);
@@ -125,7 +125,7 @@ export const addEntry = (entry: Item) => {
                 {name: "standort", value: entry.standort, type: sql.VarChar}, 
                 {name: "status", value: entry.status, type: sql.VarChar}, 
                 {name: "besitzer", value: entry.besitzer, type: sql.VarChar}, 
-                {name: "form", value: entry.form, type: sql.VarChar}]);
+                {name: "form", value: entry.form || "Nein", type: sql.VarChar}]);
             break;
         
         case "Konferenz":
@@ -137,7 +137,7 @@ export const addEntry = (entry: Item) => {
                 {name: "standort", value: entry.standort, type: sql.VarChar},
                 {name: "status", value: entry.status, type: sql.VarChar},
                 {name: "besitzer", value: entry.besitzer, type: sql.VarChar},
-                {name: "form", value: entry.form, type: sql.VarChar}
+                {name: "form", value: entry.form || "Nein", type: sql.VarChar}
             ]);
             break;
             default: reject("No Type");
@@ -166,7 +166,7 @@ export const editEntry = async (entry: Item) => {
                 {name: "standort", value: entry.standort, type: sql.VarChar},
                 {name: "status", value: entry.status, type: sql.VarChar}, 
                 {name: "besitzer", value: entry.besitzer, type: sql.VarChar}, 
-                {name: "form", value: entry.form, type: sql.VarChar}]);
+                {name: "form", value: entry.form || "Nein", type: sql.VarChar}]);
             break;
         case "PC":
             //Modify data in DB with new values
@@ -192,7 +192,7 @@ export const editEntry = async (entry: Item) => {
                 {name: "STANDORT", value: entry.standort, type: sql.VarChar}, 
                 {name: "STATUS", value: entry.status, type: sql.VarChar}, 
                 {name: "BESITZER", value: entry.besitzer, type: sql.VarChar}, 
-                {name: "FORM", value: entry.form, type: sql.VarChar}]);
+                {name: "FORM", value: entry.form || "Nein", type: sql.VarChar}]);
             break;
 
         case "Konferenz":
@@ -204,7 +204,7 @@ export const editEntry = async (entry: Item) => {
             {name: "standort", value: entry.standort, type: sql.VarChar},
             {name: "status", value: entry.status, type: sql.VarChar},
             {name: "besitzer", value: entry.besitzer, type: sql.VarChar},
-            {name: "form", value: entry.form, type: sql.VarChar}]);
+            {name: "form", value: entry.form || "Nein", type: sql.VarChar}]);
             break;
         default: 
             console.log("editEntry: Unknown kind");

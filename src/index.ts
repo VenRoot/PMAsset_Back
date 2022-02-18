@@ -25,6 +25,7 @@ import { FillPDF } from "./pdf";
 import { Blob } from "buffer";
 import { isCryptoKey } from "util/types";
 import { writeLog } from "./logs";
+import { brotliCompressSync } from "zlib";
 
 if(process.env.TEST_USER === undefined || process.env.TEST_PASSWD === undefined) throw new Error("No test user or password");
 
@@ -400,8 +401,12 @@ app.get("/getEntries", async (req, res) => {
     if(request.type == undefined) return endRes(res, 400, "No type", undefined, writeLog("Kein Typ angegeben", "ERR", "getPC", auth.username));
     RefreshSession(auth.SessionID);
     let result = await getEntries(res, request);
-    //Check if result is type of IRecordSet
-    if(result != null) endRes(res, 200, JSON.stringify(result));
+    
+    if(result != null) 
+    {
+        //@ts-ignore
+        endRes(res, 200, JSON.stringify(result));
+    }
 });
 
 app.get("/getEntry", async (req, res) => {
@@ -510,9 +515,20 @@ spdy.createServer(credentials, app).listen(5000, "0.0.0.0", () => {
     console.log("Server is running on port 5000");
 });
 
-export const endRes = (res:Response, status:number, message:string, pdf?:Buffer, Log?: Function) => {
-    res.writeHead(status, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({message, status}));
+export const endRes = (res:Response, status:number, message:string, comrpess = false, Log?: Function) => {
+    comrpess = false;
+    if(comrpess)
+    {
+        res.setHeader("Content-Encoding", "br");
+        res.writeHead(status, { "Content-Type": "application/json" });
+        res.end(brotliCompressSync(JSON.stringify({message, status})));
+    }
+    else
+    {
+        res.writeHead(status, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({message, status}));
+    }
+    
 }
 
 const assignNewKey = async (res:Response) => {
