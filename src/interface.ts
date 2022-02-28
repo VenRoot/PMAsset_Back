@@ -31,7 +31,8 @@ interface PCEntry extends Device
     equipment: string[];
     type: PCTypes;
     hersteller: PCHersteller;
-    passwort: string;   
+    passwort: string;
+    kommentar?: string;
 }
 
 let x:PCEntry = {
