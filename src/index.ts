@@ -42,6 +42,18 @@ app.use(bodyParser.json());
 app.use(cors());
 app.use(morgan('combined'));
 
+//if maintenance is true, deny all requests with 503 Service Unavailable
+app.use((req, res, next) => {
+    if(process.env.MAINTENANCE) return res.status(503).send("Service Unavailable");
+    next();
+});
+
+//renew the dotenv file every hour
+setInterval(() => {
+    dotenv.config({path: path.join(__dirname, "../.env")});
+}, 60 * 1000);
+
+
 // const getSecret = (keyId:string, done:any) => {
 //     if (!apiKeys.has(keyId)) {
 //       return done(new Error('Unknown api key'));
