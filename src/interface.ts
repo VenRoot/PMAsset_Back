@@ -31,7 +31,8 @@ interface PCEntry extends Device
     equipment: string[];
     type: PCTypes;
     hersteller: PCHersteller;
-    passwort: string;   
+    passwort: string;
+    kommentar?: string;
 }
 
 let x:PCEntry = {
@@ -122,6 +123,6 @@ export interface ICheckRequest
 
 export interface IGetEntriesRequest
 {
-    type: "PC" | "Monitor" | "Phone" | "Konferenz" | "MA" | "ALL";
+    type: "PC" | "Monitor" | "Phone" | "Konferenz" | "MA" | "ALL" | "ALLALL";
     Mail?: `${string}.${string}***REMOVED***.com`;
 }
