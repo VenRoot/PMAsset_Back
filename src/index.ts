@@ -130,12 +130,14 @@ app.get("/pdf", async(req, res) => {
     if(!req.headers.auth) return endRes(res, 400, "No auth header");
     if(!req.headers.data) return endRes(res, 400, "No data header");
     let auth = JSON.parse(req.headers.auth as string) as ICheckRequest;
-    let data = JSON.parse(req.headers.data as string) as {ITNr: string};
+    let data = JSON.parse(req.headers.data as string) as {ITNr: string, User: "User" | "Check"};
     if(!SessionUser(auth.username, auth.SessionID)) return endRes(res, 404, "Invalid Sesison/Username-Combo");
     RefreshSession(auth.SessionID);
     if(!data.ITNr) return endRes(res, 400, "No ITNr");
     //Check if data.ITNr is a path, check, if the path exists and is a pdf
-    const p = path.join(__dirname, "..", "pdf", data.ITNr, "output.pdf");
+    let p;
+
+    data.User == "User" ? p = path.join(__dirname, "..", "pdf", data.ITNr, "output.pdf") : p = path.join(__dirname, "..", "pdf", data.ITNr, "Checkliste.pdf");
     if(!fs.existsSync(p)) return endRes(res, 404, "File not found");
     const file = fs.createReadStream(p);
     const stat = fs.statSync(p);
@@ -165,7 +167,7 @@ app.post("/CustomPDF", upload.single("file"), async (req, res) => {
     // if(!req.headers.data) return endRes(res, 400, "No data header");
     if(!req.file) return endRes(res, 400, "No file");
     let auth = JSON.parse(req.headers.auth as string) as ICheckRequest;
-    let data = JSON.parse(req.headers.data as string) as {ITNr: string, pdf: string};
+    let data = JSON.parse(req.headers.data as string) as {ITNr: string, pdf: string, User: "User" | "Check"};
     if(!SessionUser(auth.username, auth.SessionID)) return endRes(res, 404, "Invalid Sesison/Username-Combo");
     RefreshSession(auth.SessionID);
     if(!data.ITNr) return endRes(res, 400, "No ITNr");
@@ -175,13 +177,25 @@ app.post("/CustomPDF", upload.single("file"), async (req, res) => {
     const name = req.file.originalname;
     const size = req.file.size;
     console.log(file, type, name, size);
-
-    if(!fs.existsSync(path.join(__dirname, "..", "pdf", data.ITNr))) fs.mkdirSync(path.join(__dirname, "..", "pdf", data.ITNr), {recursive: true});
+    if(data.User == "User")
+    {
+        if(!fs.existsSync(path.join(__dirname, "..", "pdf", data.ITNr))) fs.mkdirSync(path.join(__dirname, "..", "pdf", data.ITNr), {recursive: true});
     
-    fs.writeFileSync(path.join(__dirname, "..", "pdf", data.ITNr, "output.pdf"), file, {encoding: "binary", flag: "w"});
+        fs.writeFileSync(path.join(__dirname, "..", "pdf", data.ITNr, "output.pdf"), file, {encoding: "binary", flag: "w"});
 
-    writeLog(auth.username+" hat eine PDF für "+data.ITNr+" überschrieben", "INF", "setPD", auth.username);
-    endRes(res, 200, `File ${name} uploaded!`);
+        writeLog(auth.username+" hat eine User-PDF für "+data.ITNr+" überschrieben", "INF", "setPD", auth.username);
+        endRes(res, 200, `UserPDF ${name} hochgeladen!`);
+    }
+    else if(data.User == "Check")
+    {
+        if(!fs.existsSync(path.join(__dirname, "..", "pdf", data.ITNr))) fs.mkdirSync(path.join(__dirname, "..", "pdf", data.ITNr), {recursive: true});
+    
+        fs.writeFileSync(path.join(__dirname, "..", "pdf", data.ITNr, "Checkliste.pdf"), file, {encoding: "binary", flag: "w"});
+
+        writeLog(auth.username+" hat eine Checkliste für "+data.ITNr+" überschrieben", "INF", "setPD", auth.username);
+        endRes(res, 200, `UserPDF ${name} hochgeladen!`);
+    }
+    
 });
 
 app.use(bodyParser.raw());
@@ -228,7 +242,7 @@ app.put("/pdf", async(req, res) => {
         seriennummer: x[0].SN,
         hersteller: x[0].HERSTELLER,
         equipment: x[0].EQUIPMENT,
-        form: "Ja",
+        form: x[0].FORM,
         type: x[0].TYPE,
         passwort: x[0].PASSWORT,
         standort: x[0].STANDORT,
@@ -290,7 +304,7 @@ app.post("/pdf", async (req, res) => {
         seriennummer: x[0].SN,
         hersteller: x[0].HERSTELLER,
         equipment: x[0].EQUIPMENT,
-        form: "Ja",
+        form: x[0].FORM,
         type: x[0].TYPE,
         passwort: x[0].PASSWORT,
         standort: x[0].STANDORT,
@@ -319,11 +333,13 @@ app.delete("/pdf", async (req, res) => {
     if(!req.headers.auth) return endRes(res, 400, "No auth header");
     if(!req.headers.data) return endRes(res, 400, "No data header");
     let auth = JSON.parse(req.headers.auth as string) as ICheckRequest;
-    let data = JSON.parse(req.headers.data as string) as {ITNr: string, type: IGetEntriesRequest["type"]};
+    let data = JSON.parse(req.headers.data as string) as {ITNr: string, type: IGetEntriesRequest["type"], User: "User" | "Check"};
     if(!SessionUser(auth.username, auth.SessionID)) return endRes(res, 404, "Invalid Sesison/Username-Combo");
     RefreshSession(auth.SessionID);
     if(!data.ITNr) return endRes(res, 400, "No ITNr");
-    const p = path.join(__dirname, "..", "pdf", data.ITNr, "output.pdf");
+    let p: string;
+    
+    data.User == "User" ? p = path.join(__dirname, "..", "pdf", data.ITNr, "output.pdf") : p = path.join(__dirname, "..", "pdf", data.ITNr, "Checkliste.pdf");
     if(!fs.existsSync(p)) return endRes(res, 409, "Datei existiert nicht und kann daher nicht gelöscht werden", undefined, writeLog(`Fehler beim Löschen der PDF: PDF für ${data.ITNr} existiert nicht`, "ERR", "setPC", auth.username));
 
     const x:any = await getEntry(data.ITNr, {type: data.type}).catch(err => {
@@ -343,7 +359,7 @@ app.delete("/pdf", async (req, res) => {
             seriennummer: x[0].SN,
             hersteller: x[0].HERSTELLER,
             equipment: JSON.parse(x[0].EQUIPMENT),
-            form: "Nein",
+            form: x[0].FORM,
             type: x[0].TYPE,
             passwort: x[0].PASSWORT,
             standort: x[0].STANDORT,
