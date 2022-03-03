@@ -131,7 +131,7 @@ export const addEntry = (entry: Item) => {
             break;
         case "PC":
             console.log(`INSERT INTO [dbo].[PC] VALUES ("${entry.it_nr}", "${entry.seriennummer}", "${entry.hersteller}", "${entry.type}", "${entry.status}", "${entry.besitzer || ""}", "${entry.form}", "${entry.passwort}", "${entry.equipment}", "${entry.standort}", "${entry.kommentar}")`);
-            query(`INSERT INTO [dbo].[PC] VALUES (@itnr, @sn, @hersteller, @type, @status, @besitzer, @form, @passwort, @equipment, @standort)`, [
+            query(`INSERT INTO [dbo].[PC] VALUES (@itnr, @sn, @hersteller, @type, @status, @besitzer, @form, @passwort, @equipment, @standort, @kommentar)`, [
                 {name: "itnr", value: entry.it_nr, type: sql.VarChar}, 
                 {name: "sn", value: entry.seriennummer, type: sql.VarChar},
                 {name: "hersteller", value: entry.hersteller, type: sql.VarChar}, 
@@ -141,7 +141,9 @@ export const addEntry = (entry: Item) => {
                 {name: "form", value: entry.form || "", type: sql.VarChar}, 
                 {name: "passwort", value: entry.passwort, type: sql.VarChar}, 
                 {name: "equipment", value: JSON.stringify(entry.equipment), type: sql.VarChar}, 
-                {name: "standort", value: entry.standort, type: sql.VarChar}]);
+                {name: "standort", value: entry.standort, type: sql.VarChar},
+                {name: "kommentar", value: entry.kommentar || "", type: sql.VarChar}
+        ]);
             break;
         case "Phone": 
             query(`INSERT INTO [dbo].[PHONE] VALUES (@itnr, @sn, @model, @standort, @status, @besitzer, @form)`, [
