@@ -13,9 +13,10 @@ import cors from 'cors';
 import morgan from 'morgan';
 import {checkUser, getUserInfo} from "./ad";
 import {decrypt, encrypt, generateKey} from "./crypto";
-import {IAuthRequest, ICheckRequest, IEntryDevices, IGetEntriesRequest, Item} from "./interface";
+import {IAADToken, IAuthRequest, ICheckRequest, IEntryDevices, IGetEntriesRequest, Item} from "./interface";
 import {checkAlreadyLoggedIn, Sessions, checkUser as SessionUser, RefreshSession} from "./session";
 import { editEntry, getEntries, getEntry } from "./sql";
+import {checkAllowedUser, validateAAD} from "./aad";
 import {IRecordSet} from "mssql";
 
 import https from "http2";
@@ -98,6 +99,26 @@ app.get("/auth", async (req, res) => {
                     return endRes(res, 200, "Successfully logged in", undefined, writeLog("User erfolgreich angemeldet", "VER", "getUN", auth.username!));
                 }
             });
+    }
+    else if(auth.type === "AuthADUser") {
+        if(auth.username === undefined || auth.ADtoken === undefined) return endRes(res, 401, "No username or token"); //Check if username and password are set
+        let session = Sessions.findIndex(session => session.id === auth.SessionID);
+        if(session === -1) return endRes(res, 404, "Session not found"); //Check if session is found
+        if(Sessions[session].user?.authenticated) return endRes(res, 403, "Session already has a user logged in", undefined, writeLog("Diese Sitzung wird bereits von einem anderen User benutzt", "WAR", "getUN", auth.username!)); //Check if user is already logged in
+        if(checkAlreadyLoggedIn(auth.username as string)) return endRes(res, 403, "The User is already logged in from another session!", undefined, writeLog("User ist bereits von einem anderen Client angemeldet", "WAR", "getUN", auth.username!));  //Check if the user is already logged in from another session
+        const token = validateAAD(auth.ADtoken) as IAADToken;
+        if(token === undefined) return endRes(res, 401, "Invalid token");
+        if(token.preferred_username !== auth.username) return endRes(res, 401, "Username does not match token");
+
+        //check if token.exp is not older than 1 minute
+        if(new Date(token.exp * 1000) < new Date(Date.now())) return endRes(res, 401, "Token expired");
+        if(!checkAllowedUser(token.preferred_username)) return endRes(res, 401, "User is not allowed to use this service");
+
+        Sessions[session].user = {username: token.preferred_username as string, authenticated: true};
+        console.log(Sessions[session]);
+        Sessions[session].date = new Date(); //Update session date to keep it alive
+        return endRes(res, 200, "Successfully logged in", undefined, writeLog("AAD-User erfolgreich angemeldet", "VER", "getUN", token.preferred_username!));
+
     }
     else if(auth.type === "Logout")
     {

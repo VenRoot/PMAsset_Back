@@ -112,6 +112,7 @@ export interface IAuthRequest
     type: "RequestKey" | "AuthUser"
     username?: string;
     password?: string;
+    ADtoken?: string;
     SessionID?: string;
 }
 export interface ICheckRequest
@@ -120,6 +121,23 @@ export interface ICheckRequest
     SessionID: string;
 }
 
+export interface IAADToken
+{
+        aud: string,
+        iss: string,
+        iat: number, //authentifizierungszeitpunkt
+        nbf: number, 
+        exp: number, //verfallszeitpunkt
+        name: string,
+        nonce: string,
+        oid: string,
+        preferred_username: string, //mail
+        rh: string,
+        sub: string,
+        tid: string,
+        uti: string,
+        ver: string
+}
 
 export interface IGetEntriesRequest
 {
