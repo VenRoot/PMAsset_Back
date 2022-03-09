@@ -221,17 +221,20 @@ app.post("/CustomPDF", upload.single("file"), async (req, res) => {
 
 app.use(bodyParser.raw());
 // app.use(bodyParser.urlencoded({ extended: true }));
+
+
+// Hier wird eine PDF neu erstellt
 app.put("/pdf", async(req, res) => {
     
     if(!req.headers.auth) return endRes(res, 400, "No auth header");
     if(!req.headers.data) return endRes(res, 400, "No data header");
     let auth = JSON.parse(req.headers.auth as string) as ICheckRequest;
-    let data = JSON.parse(req.headers.data as string) as {ITNr: string, type: IGetEntriesRequest["type"], own?:boolean, file?: string};
+    let data = JSON.parse(req.headers.data as string) as {ITNr: string, type: IGetEntriesRequest["type"], User: "User" | "Check", own?:boolean, file?: string};
 
     if(!SessionUser(auth.username, auth.SessionID)) return endRes(res, 404, "Invalid Sesison/Username-Combo");
     RefreshSession(auth.SessionID);
     if(!data.ITNr) return endRes(res, 400, "No ITNr");
-    const p = path.join(__dirname, "..", "pdf", data.ITNr, "output.pdf");
+    const p = data.User == "User" ? path.join(__dirname, "..", "pdf", data.ITNr, "output.pdf") : path.join(__dirname, "..", "pdf", data.ITNr, "Checkliste.pdf");
     if(fs.existsSync(p)) return endRes(res, 409, "File already exists", undefined, writeLog("PDF für "+data.ITNr+" konnte nicht geschrieben werden, da die Datei bereits existiert", "ERR", "setPC", auth.username));
 
     
@@ -250,6 +253,9 @@ app.put("/pdf", async(req, res) => {
     if(data.own)
     {
         console.log("Bearbeite PDF mit neuen Werten");
+
+        const pdf = data.file;
+        if(!pdf) return endRes(res, 400, "No file");
         
         //The body is in binary, so we need to parseit in express
         
@@ -300,11 +306,13 @@ app.post("/pdf", async (req, res) => {
     if(!req.headers.auth) return endRes(res, 400, "No auth header");
     if(!req.headers.data) return endRes(res, 400, "No data header");
     let auth = JSON.parse(req.headers.auth as string) as ICheckRequest;
-    let data = JSON.parse(req.headers.data as string) as {ITNr: string, type: IGetEntriesRequest["type"]};
+    let data = JSON.parse(req.headers.data as string) as {ITNr: string, type: IGetEntriesRequest["type"], User: "User" | "Check"};
     if(!SessionUser(auth.username, auth.SessionID)) return endRes(res, 404, "Invalid Sesison/Username-Combo");
     RefreshSession(auth.SessionID);
     if(!data.ITNr) return endRes(res, 400, "No ITNr", undefined, writeLog(`Fehler beim Bearbeiten der PDF: Keine ITNr`, "ERR", "setPC", auth.username));
-    const p = path.join(__dirname, "..", "pdf", data.ITNr, "output.pdf");
+    let p;
+    
+    data.User == "User" ? p = path.join(__dirname, "..", "pdf", data.ITNr, "output.pdf") : p = path.join(__dirname, "..", "pdf", data.ITNr, "Checkliste.pdf");
     if(!fs.existsSync(p)) return endRes(res, 409, "Datei existiert nicht und kann daher nicht bearbeiten werden", undefined, writeLog(`Fehler beim Bearbeiten der PDF: PDF für ${data.ITNr} existiert nicht`, "ERR", "setPC", auth.username));
 
     const x:any = await getEntry(data.ITNr, {type: data.type}).catch(err => {
@@ -374,6 +382,8 @@ app.delete("/pdf", async (req, res) => {
     if(!x) return endRes(res, 500, "Internal Server Error\n\n", undefined, writeLog("Fehler beim Löschen der PDF: Eintrag existiert nicht in der DB", "ERR", "setPC", auth.username));
     try
     {
+        const {form, check} = x[0].FORM.split("|");
+        data.User == "User" ? x[0].FORM = `Nein|${check}` : x[0].FORM = `${form}|Nein`;
         const newPC:Item = {
             kind: "PC",
             it_nr: x[0].ITNR,
@@ -388,12 +398,11 @@ app.delete("/pdf", async (req, res) => {
             besitzer: x[0].BESITZER,
         }
         setData(newPC, "POST", res, false).catch(err => {
+            if(err) return endRes(res, 500, "Internal Server Error\n\n"+JSON.stringify(err), undefined, writeLog("Fehler beim Löschen der PDF: "+err, "ERR", "setPC", auth.username));    
+        });
+        fs.unlink(p, err => {
             if(err) return endRes(res, 500, "Internal Server Error\n\n"+JSON.stringify(err), undefined, writeLog("Fehler beim Löschen der PDF: "+err, "ERR", "setPC", auth.username));
-            fs.unlink(p, err => {
-                if(err) return endRes(res, 500, "Internal Server Error\n\n"+JSON.stringify(err), undefined, writeLog("Fehler beim Löschen der PDF: "+err, "ERR", "setPC", auth.username));
-                endRes(res, 200, "PDF wurde gelöscht");
-            });
-    
+            endRes(res, 200, "PDF wurde gelöscht");
         });
     }
     catch(err)
