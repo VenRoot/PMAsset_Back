@@ -383,7 +383,7 @@ app.delete("/pdf", async (req, res) => {
     try
     {
         const {form, check} = x[0].FORM.split("|");
-        data.User == "User" ? x[0].FORM = `Nein|${check}` : x[0].FORM = `${form}|Nein`;
+        data.User == "User" ? x[0].FORM = `Nein|${check || "Nein"}` : x[0].FORM = `${form || "Nein"}|Nein`;
         const newPC:Item = {
             kind: "PC",
             it_nr: x[0].ITNR,
