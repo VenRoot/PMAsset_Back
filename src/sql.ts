@@ -7,7 +7,27 @@ import path from "path";
 import { endRes } from '.';
 import { DeletePDF } from './pdf';
 import { AllUsers, getAllUsers, getUserInfo } from './ad';
-import { emitKeypressEvents } from 'readline';
+import s from "node-schedule";
+import io from "@pm2/io";
+
+const rtpc = io.metric({
+    name: "Realtime PCs",
+    id: "realtimePcs"
+});
+
+const rtmon = io.metric({
+    name: "Realtime Monitors",
+    id: "realtimeMonitors"
+});
+
+s.scheduleJob("*/1 * * * *", async () => {
+    const [pc, mon] = await Promise.all([
+        query(`SELECT * FROM PC`),
+        query(`SELECT * FROM MONITOR`)
+    ]);
+    rtpc.set(pc.recordset.length);
+    rtmon.set(mon.recordset.length);
+});
 
 dotenv.config({path: path.join(__dirname, "..", '/.env')});
 
@@ -128,6 +148,9 @@ export const addEntry = (entry: Item) => {
                 {name: "status", value: entry.status, type: sql.VarChar}, 
                 {name: "besitzer", value: entry.besitzer, type: sql.VarChar}, 
                 {name: "form", value: entry.form || "Nein", type: sql.VarChar}]);
+
+                //increase the amount of monitors in the rtmon
+                rtmon.set(rtmon.val()+1);
             break;
         case "PC":
             console.log(`INSERT INTO [dbo].[PC] VALUES ("${entry.it_nr}", "${entry.seriennummer}", "${entry.hersteller}", "${entry.type}", "${entry.status}", "${entry.besitzer || ""}", "${entry.form}", "${entry.passwort}", "${entry.equipment}", "${entry.standort}", "${entry.kommentar}")`);
@@ -144,6 +167,8 @@ export const addEntry = (entry: Item) => {
                 {name: "standort", value: entry.standort, type: sql.VarChar},
                 {name: "kommentar", value: entry.kommentar || "", type: sql.VarChar}
         ]);
+        //increase the amount of monitors in the rtmon
+        rtpc.set(rtpc.val()+1);
             break;
         case "Phone": 
             query(`INSERT INTO [dbo].[PHONE] VALUES (@itnr, @sn, @model, @standort, @status, @besitzer, @form)`, [
@@ -257,11 +282,13 @@ export const deleteEntry = async (entry: Item) => {
         case "Monitor": 
             query(`DELETE FROM [dbo].[MONITOR] WHERE ITNR = @itnr AND SN = @sn`, [
                 {name: "itnr", value: entry.it_nr, type: sql.VarChar}, {name: "sn", value: entry.seriennummer, type: sql.VarChar}]);
+                rtmon.set(rtmon.val()-1);
             break;
         case "PC":
             //Delete data from DB
             query(`DELETE FROM [dbo].[PC] WHERE ITNR = @itnr AND SN = @sn`, [
                 {name: "itnr", value: entry.it_nr, type: sql.VarChar}, {name: "sn", value: entry.seriennummer, type: sql.VarChar}]);
+                rtpc.set(rtpc.val()-1);
             break;
         case "Phone": 
             query(`DELETE FROM [dbo].[PHONE] WHERE ITNR = @ITNR AND SN = @SN`, [{name: "ITNR", value: entry.it_nr, type: sql.VarChar}, {name: "SN", value: entry.seriennummer, type: sql.VarChar}]);
@@ -313,3 +340,4 @@ export const query = async (query: string, prepared?: PQueryArray[]) => {
         throw e;
     }
 };
+
