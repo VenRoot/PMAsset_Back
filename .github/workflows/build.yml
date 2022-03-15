@@ -18,6 +18,6 @@ jobs:
       - name: Installing dependencies
         run: npm ci
       - name: Setting up TypeScript Compiler
-        run: npm i typescript
+        run: npm i typescript@next
       - name: Building project
         run: npm run build
