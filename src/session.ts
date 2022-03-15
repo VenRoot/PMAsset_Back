@@ -1,4 +1,5 @@
 import s from "node-schedule";
+import io from "@pm2/io";
 interface Session
 {
     id: string;
@@ -8,6 +9,12 @@ interface Session
     }
     date: Date;
 }
+
+
+const realtimeUsers = io.metric({
+    name: "Realtime Users",
+    id: "realtimeUsers"
+})
 
 export const Sessions:Session[] =
 [
@@ -27,6 +34,9 @@ const checkSessions = ():void =>
             Sessions.splice(Sessions.indexOf(session), 1);
         }
     });
+    realtimeUsers.set(Sessions.length);
+
+
 }
 
 export const RefreshSession = (Session:string):void =>
