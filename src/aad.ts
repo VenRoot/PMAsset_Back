@@ -13,4 +13,4 @@ export const validateAAD = (token: string) =>
     }
 }
 
-export const checkAllowedUser = (user: string) => allowedUsers.includes(user.split("@")[0]);
+export const checkAllowedUser = (user: string) => allowedUsers.includes(user.split("@")[0].toLocaleLowerCase());
