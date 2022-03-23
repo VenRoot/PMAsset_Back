@@ -15,7 +15,7 @@ import {checkUser, getUserInfo} from "./ad";
 import {decrypt, encrypt, generateKey} from "./crypto";
 import {IAADToken, IAuthRequest, ICheckRequest, IEntryDevices, IGetEntriesRequest, Item} from "./interface";
 import {checkAlreadyLoggedIn, Sessions, checkUser as SessionUser, RefreshSession} from "./session";
-import { editEntry, getEntries, getEntry } from "./sql";
+import { editEntry, getEntries, getEntry, query } from "./sql";
 import {checkAllowedUser, validateAAD} from "./aad";
 import {IRecordSet} from "mssql";
 
@@ -216,6 +216,37 @@ app.post("/CustomPDF", upload.single("file"), async (req, res) => {
         writeLog(auth.username+" hat eine Checkliste für "+data.ITNr+" überschrieben", "INF", "setPD", auth.username);
         endRes(res, 200, `UserPDF ${name} hochgeladen!`);
     }
+
+    const x = await getEntry(data.ITNr, {type: "PC"}).catch(err => {
+        console.log("Fehler: ",err);
+        writeLog("Fehler beim Abrufen der Einträge: "+err, "ERR", "setPC", auth.username);
+        switch(err)
+        {
+            case 404: return endRes(res, 404, "Entry not found");
+            default: return endRes(res, 500, "Internal Server Error\n\n"+JSON.stringify(err));
+        }
+    });
+    if(!x) return endRes(res, 500, "Internal Server Error\n\n");
+    
+    let [form, check] = x[0].FORM.split("|");
+    
+    data.User == "User" ? form = "Ja" : check = "Ja";
+
+
+    const newPC:Item = {
+        kind: "PC",
+        it_nr: x[0].ITNR,
+        seriennummer: x[0].SN,
+        hersteller: x[0].HERSTELLER,
+        equipment: x[0].EQUIPMENT,
+        form: `${form}|${check}`,
+        type: x[0].TYPE,
+        passwort: x[0].PASSWORT,
+        standort: x[0].STANDORT,
+        status: x[0].STATUS,
+        besitzer: x[0].BESITZER,
+    }
+    editEntry(newPC);
     
 });
 
