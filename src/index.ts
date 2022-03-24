@@ -227,7 +227,29 @@ app.post("/CustomPDF", upload.single("file"), async (req, res) => {
         }
     });
     if(!x) return endRes(res, 500, "Internal Server Error\n\n");
-    
+
+    //Remove any spaces from x[0].FORM
+    x[0].FORM = x[0].FORM.replace(/\s/g, "");
+    //Check with regex if x[0].FORM contains either the words "Nein" or "Ja" with a "|" in between
+    if(!x[0].FORM.match(/^(Nein|Ja)\|(Nein|Ja)$/))
+    {
+        writeLog("Der Formular-String für "+data.ITNr+" ist nicht korrekt. Korrigiere:\n\n"+x[0].FORM, "WAR", "setPC", auth.username);
+
+        //We need to figure out the original values
+        let original = x[0].FORM.split("|") as string[];
+        let newForm = "";
+        //If the length of the original is greater than 2, we need to reduce it to 2
+         
+        if(original.length > 2)
+        {
+            for(let i = 0; i < 2; i++)
+            {
+                newForm += original[i]+"|";
+            }
+            newForm = newForm.substring(0, newForm.length-1);
+        }
+    }
+
     let [form, check] = x[0].FORM.split("|");
     
     data.User == "User" ? form = "Ja" : check = "Ja";
@@ -413,7 +435,7 @@ app.delete("/pdf", async (req, res) => {
     if(!x) return endRes(res, 500, "Internal Server Error\n\n", undefined, writeLog("Fehler beim Löschen der PDF: Eintrag existiert nicht in der DB", "ERR", "setPC", auth.username));
     try
     {
-        const {form, check} = x[0].FORM.split("|");
+        const [form, check] = (x[0].FORM as string).split("|");
         data.User == "User" ? x[0].FORM = `Nein|${check || "Nein"}` : x[0].FORM = `${form || "Nein"}|Nein`;
         const newPC:Item = {
             kind: "PC",
@@ -433,7 +455,7 @@ app.delete("/pdf", async (req, res) => {
         });
         fs.unlink(p, err => {
             if(err) return endRes(res, 500, "Internal Server Error\n\n"+JSON.stringify(err), undefined, writeLog("Fehler beim Löschen der PDF: "+err, "ERR", "setPC", auth.username));
-            endRes(res, 200, "PDF wurde gelöscht");
+            endRes(res, 200, data.User+"-PDF wurde gelöscht");
         });
     }
     catch(err)
