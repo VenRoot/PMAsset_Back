@@ -590,7 +590,7 @@ app.put("/setData", async(req, res) => {
     if(request === undefined) return endRes(res, 400, "No request");
     console.table(auth);
     console.table(request);
-    if(!(await checkAuth(req, res, auth))) return;
+    if(!(await checkAuth(req, res, auth))) return endRes(res, 401, "User not authenticated");
 
     RefreshSession(auth.SessionID);
     console.log("Refreshed");

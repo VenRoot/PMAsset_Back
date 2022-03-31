@@ -130,14 +130,15 @@ export const addEntry = (entry: Item) => {
     
     return new Promise((resolve, reject) => {
     console.table(entry);
+    console.log("Bin in der addEntry");
     if(entry.kind == "PC" && !entry.equipment) entry.equipment = [];
     if(entry.kind == "PC" && typeof entry.equipment == "string") entry.equipment = JSON.parse(entry.equipment);
-    const [check, form] = entry.form.split("|");
     
-
+    console.log(entry.kind);
     switch(entry.kind)
     {
         case "Monitor": 
+        console.log("trage Monitor ein: ", JSON.stringify(entry));
             query(`INSERT INTO [dbo].[MONITOR] VALUES (@itnr, @type, @hersteller, @model, @sn, @standort, @status, @besitzer, @form)`, [
                 {name: "itnr", value: entry.it_nr, type: sql.VarChar}, 
                 {name: "type", value: entry.type, type: sql.VarChar}, 
