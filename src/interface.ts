@@ -33,6 +33,7 @@ interface PCEntry extends Device
     hersteller: PCHersteller;
     passwort: string;
     kommentar?: string;
+    mac: string;
 }
 
 let x:PCEntry = {
@@ -46,7 +47,8 @@ let x:PCEntry = {
     hersteller: "Haug",
     passwort: "Passwort",
     besitzer: "Max Mustermann",
-    form: "Nein"
+    form: "Nein",
+    mac: "00:00:00:00:00:00",
 }
 
 interface MonitorEntry extends Device
