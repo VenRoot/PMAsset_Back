@@ -260,6 +260,7 @@ app.post("/CustomPDF", upload.single("file"), async (req, res) => {
         it_nr: x[0].ITNR,
         seriennummer: x[0].SN,
         hersteller: x[0].HERSTELLER,
+        mac: x[0].MAC,
         equipment: x[0].EQUIPMENT,
         form: `${form}|${check}`,
         type: x[0].TYPE,
@@ -321,6 +322,7 @@ app.put("/pdf", async(req, res) => {
         it_nr: x[0].ITNR,
         seriennummer: x[0].SN,
         hersteller: x[0].HERSTELLER,
+        mac: x[0].MAC,
         equipment: x[0].EQUIPMENT,
         form: x[0].FORM,
         type: x[0].TYPE,
@@ -385,6 +387,7 @@ app.post("/pdf", async (req, res) => {
         it_nr: x[0].ITNR,
         seriennummer: x[0].SN,
         hersteller: x[0].HERSTELLER,
+        mac: x[0].MAC,
         equipment: x[0].EQUIPMENT,
         form: x[0].FORM,
         type: x[0].TYPE,
@@ -442,6 +445,7 @@ app.delete("/pdf", async (req, res) => {
             it_nr: x[0].ITNR,
             seriennummer: x[0].SN,
             hersteller: x[0].HERSTELLER,
+            mac: x[0].MAC,
             equipment: JSON.parse(x[0].EQUIPMENT),
             form: x[0].FORM,
             type: x[0].TYPE,
@@ -584,7 +588,7 @@ app.post("/setData", async (req, res) => {
 // Insert device data
 app.put("/setData", async(req, res) => {    
     if(req.headers.auth === undefined) return endRes(res, 400, "No auth header");
-    if(req.headers.device === undefined) return endRes(res, 400, "No req header");
+    if(req.headers.device === undefined) return endRes(res, 400, "No device header");
     const auth = JSON.parse(req.headers.auth as string) as ICheckRequest;
     const request = JSON.parse(req.headers.device as string) as Item;
     if(request === undefined) return endRes(res, 400, "No request");

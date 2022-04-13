@@ -159,9 +159,6 @@ export const getAllUsers = () => new Promise((resolve, reject) => {
         // `(proxyAddresses=*)`,
         '))'
     ].join('');
-
-
-    let filter = adFilter("*");
     let opt = {
         paging: {
             pageSize: 100000

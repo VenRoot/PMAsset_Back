@@ -154,8 +154,8 @@ export const addEntry = (entry: Item) => {
                 rtmon.set(rtmon.val()+1);
             break;
         case "PC":
-            console.log(`INSERT INTO [dbo].[PC] VALUES ("${entry.it_nr}", "${entry.seriennummer}", "${entry.hersteller}", "${entry.type}", "${entry.status}", "${entry.besitzer || ""}", "${entry.form}", "${entry.passwort}", "${entry.equipment}", "${entry.standort}", "${entry.kommentar}")`);
-            query(`INSERT INTO [dbo].[PC] VALUES (@itnr, @sn, @hersteller, @type, @status, @besitzer, @form, @passwort, @equipment, @standort, @kommentar)`, [
+            console.log(`INSERT INTO [dbo].[PC] VALUES ("${entry.it_nr}", "${entry.seriennummer}", "${entry.hersteller}", "${entry.type}", "${entry.status}", "${entry.besitzer || ""}", "${entry.form}", "${entry.passwort}", "${entry.equipment}", "${entry.standort}", "${entry.kommentar}", "${entry.mac}")`);
+            query(`INSERT INTO [dbo].[PC] VALUES (@itnr, @sn, @hersteller, @type, @status, @besitzer, @form, @passwort, @equipment, @standort, @kommentar, @mac)`, [
                 {name: "itnr", value: entry.it_nr, type: sql.VarChar}, 
                 {name: "sn", value: entry.seriennummer, type: sql.VarChar},
                 {name: "hersteller", value: entry.hersteller, type: sql.VarChar}, 
@@ -166,7 +166,8 @@ export const addEntry = (entry: Item) => {
                 {name: "passwort", value: entry.passwort, type: sql.VarChar}, 
                 {name: "equipment", value: JSON.stringify(entry.equipment), type: sql.VarChar}, 
                 {name: "standort", value: entry.standort, type: sql.VarChar},
-                {name: "kommentar", value: entry.kommentar || "", type: sql.VarChar}
+                {name: "kommentar", value: entry.kommentar || "", type: sql.VarChar},
+                {name: "mac", value: entry.mac || "", type: sql.VarChar}
         ]);
         //increase the amount of monitors in the rtmon
         rtpc.set(rtpc.val()+1);
@@ -224,10 +225,11 @@ export const editEntry = async (entry: Item) => {
             break;
         case "PC":
             //Modify data in DB with new values
-            query(`UPDATE [dbo].[PC] SET [ITNR] = @itnr, [SN] = @sn, [HERSTELLER] = @hersteller, [TYPE] = @type, [STATUS] = @status, [BESITZER] = @besitzer, [FORM] = @form, [PASSWORT] = @passwort, [EQUIPMENT] = @equipment, [STANDORT] = @standort, [KOMMENTAR] = @kommentar WHERE [ITNR] = @itnr`, [
+            query(`UPDATE [dbo].[PC] SET [ITNR] = @itnr, [SN] = @sn, [HERSTELLER] = @hersteller, [TYPE] = @type, [STATUS] = @status, [BESITZER] = @besitzer, [FORM] = @form, [PASSWORT] = @passwort, [EQUIPMENT] = @equipment, [STANDORT] = @standort, [KOMMENTAR] = @kommentar, [MAC] = @mac WHERE [ITNR] = @itnr`, [
                 {name: "itnr", value: entry.it_nr, type: sql.VarChar}, 
                 {name: "sn", value: entry.seriennummer, type: sql.VarChar}, 
                 {name: "hersteller", value: entry.hersteller, type: sql.VarChar}, 
+                {name: "mac", value: entry.mac, type: sql.VarChar},
                 {name: "type", value: entry.type, type: sql.VarChar}, 
                 {name: "status", value: entry.status, type: sql.VarChar}, 
                 {name: "besitzer", value: entry.besitzer, type: sql.VarChar}, 
@@ -235,7 +237,8 @@ export const editEntry = async (entry: Item) => {
                 {name: "passwort", value: entry.passwort, type: sql.VarChar}, 
                 {name: "equipment", value: JSON.stringify(entry.equipment), type: sql.VarChar}, 
                 {name: "standort", value: entry.standort, type: sql.VarChar},
-                {name: "kommentar", value: entry.kommentar, type: sql.VarChar}]);
+                {name: "kommentar", value: entry.kommentar, type: sql.VarChar},
+            ]);
 
             if(entry.form == "Nein") DeletePDF(entry).then((e) => e ? console.log("PDF deleted") : null);
             break;
