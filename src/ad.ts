@@ -168,14 +168,70 @@ export const getAllUsers = () => new Promise((resolve, reject) => {
     };
 
     //@ts-ignore
-    ad.findUsers(opt, (err, user) => {
+    ad.findUsers(opt, (err, user:users[]) => {
         if (err) throw err;
         if (err) return reject(err as any);
-        //@ts-ignore
-        resolve(user.filter(us => us.memberOf?.includes("CN=All Users - Putzmeister,OU=DE,OU=Groups,OU=RealmJoin,OU=OneIT,DC=***REMOVED***,DC=net")) as any);
+        
+        let z = performance.now();
+
+        // fs.writeFileSync("./users.json", JSON.stringify(user, undefined, 4));
+
+        
+        let count = 0;
+        let uss = user.filter(us => {
+            count++;
+            if(!Array.isArray(us.memberOf)) 
+            {
+                // console.log("Out")
+                return false;
+            }
+            let found = false;
+            us.memberOf.forEach(y => {
+                if(y.includes("All Users - Putzmeister")) 
+                {
+                    found = true;
+                    return;
+                }
+            });
+            return found;
+        });
+        console.log(user.length);
+        console.log(count);
+        console.log(performance.now() - z + "ms");
+        uss = uss
+        resolve(uss);
+        
+        // resolve(user.filter(us => Array.isArray(us.memberOf as string[]) ? us.memberOf.filter(x => x.includes("All Users - Putzmeister")) : false));
+
+        // resolve(user.filter(us => (us.memberOf as string[])?.includes("CN=All Users - Putzmeister,OU=DE,OU=Groups,OU=RealmJoin,OU=OneIT,DC=***REMOVED***,DC=net")) as any);
         // resolve(user as any);
     });
 });
+
+let x =
+{
+    all: 1
+}
+
+interface users
+{
+    mail: string,
+    name: string, 
+    employeeNumber: string,
+    department: string,
+    departmentNumber: string,
+    title: string,
+    telephoneNumber: string,
+    mobile: string,
+    physicalDeliveryOfficeName: string,
+    l: string,
+    st: string,
+    postalCode: string,
+    co: string,
+    userPrincipalName: string,
+    cn: string,
+    memberOf: string[]
+}
 
 export const getUserInfo = (username: string, callback: (user?: any | null, err?: string) => void) => {
 
