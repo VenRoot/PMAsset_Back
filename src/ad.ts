@@ -5,7 +5,7 @@ import { performance } from "perf_hooks";
 import fs from "fs";
 
 const ad = new ActiveDirectory({
-    url: "ldap:***REMOVED***",
+    url: "ldap://azrweudc01.jumbo.net",
     baseDN: "dc=jumbo,dc=net",
     username: process.env.AZURE_USER as string,
     password: process.env.AZURE_PASSWD as string,
@@ -96,7 +96,7 @@ export const getAllUsers = () => new Promise((resolve, reject) => {
     //     sizeLimit: 0,
     //     timeLimit: 10,
     //     tlsOptions: {rejectUnauthorized: false},
-    ***REMOVED***",
+    //     url: "ldap://azrweudc01.jumbo.net",
     // }, (err, users: any[]) => {
     //     if (err) {
     //         console.error(err);
@@ -199,7 +199,7 @@ export const getAllUsers = () => new Promise((resolve, reject) => {
         console.log(count);
         console.log(performance.now() - z + "ms");
         //Remove the property "memberOf" from all objects in the array
-        let newObj = uss.map(({memberOf, ...rest}) => rest);
+        let newObj = uss.map(({memberOf, title, co, department, departmentNumber, employeeNumber, physicalDeliveryOfficeName, name, mobile, st, postalCode, l, telephoneNumber, ...rest}) => rest);
         resolve(newObj);
         
         // resolve(user.filter(us => Array.isArray(us.memberOf as string[]) ? us.memberOf.filter(x => x.includes("All Users - Putzmeister")) : false));
