@@ -198,8 +198,9 @@ export const getAllUsers = () => new Promise((resolve, reject) => {
         console.log(user.length);
         console.log(count);
         console.log(performance.now() - z + "ms");
-        uss = uss
-        resolve(uss);
+        //Remove the property "memberOf" from all objects in the array
+        let newObj = uss.map(({memberOf, ...rest}) => rest);
+        resolve(newObj);
         
         // resolve(user.filter(us => Array.isArray(us.memberOf as string[]) ? us.memberOf.filter(x => x.includes("All Users - Putzmeister")) : false));
 
