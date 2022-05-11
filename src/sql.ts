@@ -80,9 +80,7 @@ export const getEntries = async (res: Response, type: IGetEntriesRequest) => {
         return endRes(res, 200, JSON.stringify({pc: pc.recordset, mon: mon.recordset, ph: ph.recordset, konf: konf.recordset, ma: ma}), true);
     }
     else if(type.type == "MA")
-    {
-        if(!AllUsers) return endRes(res, 200, JSON.stringify(AllUsers), true);
-        
+    {        
         const users = await getAllUsers();
         return endRes(res, 200, JSON.stringify(users), true);
 
