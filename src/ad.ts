@@ -10,7 +10,7 @@ const ad = new ActiveDirectory({
     username: process.env.AZURE_USER as string,
     password: process.env.AZURE_PASSWD as string,
     //@ts-ignore
-    pageSize: 10000
+    pageSize: 100000
 });
 
 console.log(process.env.AZURE_USER, process.env.AZURE_PASSWD);
@@ -143,22 +143,22 @@ export const getAllUsers = () => new Promise((resolve, reject) => {
         // 'objectSid', //S-1-5-21-2499678901-816157776-2499678901-500
         // 'primaryGroupID', 
         // 'objectClass', 
-        // 'memberOf' //Gruppen wie DE GRU DriveMapping P
+        'memberOf' //Gruppen wie DE GRU DriveMapping P
     ];
 
-    const adFilter = (search: string) => [
-        '(&(objectCategory=person)(objectClass=user)',
-        '(|',
-        // `(initials=*)`,
-        // `(cn=*)`,
-        `(mail=*)`,
-        // `(employeeNumber=*)`,
-        `(departmentNumber=*)`,
+    // const adFilter = (search: string) => [
+    //     '(&(objectCategory=person)(objectClass=user)',
+    //     '(|',
+    //     // `(initials=*)`,
+    //     // `(cn=*)`,
+    //     `(mail=*)`,
+    //     // `(employeeNumber=*)`,
+    //     `(departmentNumber=*)`,
 
-        // `(userPrincipalName=*)`,
-        // `(proxyAddresses=*)`,
-        '))'
-    ].join('');
+    //     // `(userPrincipalName=*)`,
+    //     // `(proxyAddresses=*)`,
+    //     '))'
+    // ].join('');
     let opt = {
         paging: {
             pageSize: 100000
@@ -172,7 +172,7 @@ export const getAllUsers = () => new Promise((resolve, reject) => {
         if (err) throw err;
         if (err) return reject(err as any);
         //@ts-ignore
-        resolve(user.filter(us => us.mail != undefined || us.departmentNumber != undefined) as any);
+        resolve(user.filter(us => us.memberOf?.includes("CN=All Users - Putzmeister,OU=DE,OU=Groups,OU=RealmJoin,OU=OneIT,DC=***REMOVED***,DC=net")) as any);
         // resolve(user as any);
     });
 });
